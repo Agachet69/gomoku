@@ -11,13 +11,35 @@ RED = (245, 66, 66)
 WINDOW_SIZE = 1000
 GAME_SIZE = WINDOW_SIZE * 0.96
 CELL_SIZE = GAME_SIZE // BOARD_SIZE 
-STONE_RADIUS = CELL_SIZE // 2 - 2
+STONE_RADIUS = CELL_SIZE // 2 - 5
 
 
 def draw_board(board: Board, screen):
     screen.fill(WHITE)
-    for i in range(BOARD_SIZE +1):
+    # board.board = [
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    # ]
 
+
+    for i in range(BOARD_SIZE +1):
 
         pygame.draw.line(
             screen,
@@ -41,14 +63,14 @@ def draw_board(board: Board, screen):
                 pygame.draw.circle(
                     screen,
                     BLACK,
-                    ((x + 0.5) * CELL_SIZE, (y + 0.5) * CELL_SIZE),
+                    (25 + (x + 0.5) * CELL_SIZE, 25 + (y + 0.5) * CELL_SIZE),
                     STONE_RADIUS,
                 )
             elif val == 2:
                 pygame.draw.circle(
                     screen,
-                    BLUE,
-                    ((x + 0.5) * CELL_SIZE, (y + 0.5) * CELL_SIZE),
+                    RED,
+                    (25 + (x + 0.5) * CELL_SIZE, 25 + (y + 0.5) * CELL_SIZE),
                     STONE_RADIUS,
                 )
 
@@ -61,6 +83,9 @@ def init_game():
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
     pygame.display.set_caption("Gomoku AI")
     print(print(board.board))
+    board.board[0][0] = 1
+    board.board[0][1] = 2
+    print(print(board.board))
     run = True
 
     while run is True:
@@ -68,7 +93,7 @@ def init_game():
             if event.type == pygame.QUIT:
                 run = False
         # screen.fill("purple")
-
+        draw_board(board, screen)
         # pygame.display.flip()
 
     pygame.quit()
