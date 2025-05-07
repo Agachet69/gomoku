@@ -3,6 +3,7 @@ import pygame
 def init_game():
     pygame.init()
     screen = pygame.display.set_mode((400,400))
+    pygame.display.set_caption("Gomoku AI")
 
     run = True
 
