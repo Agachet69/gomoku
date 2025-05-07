@@ -59,7 +59,7 @@ def init_game():
 
     run = True
 
-    while run == True:
+    while run is True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
