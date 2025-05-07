@@ -7,14 +7,18 @@ BLACK = (20, 20, 20)
 GRAY = (200, 200, 200)
 BLUE = (66, 135, 245)
 RED = (245, 66, 66)
+
 WINDOW_SIZE = 1000
-CELL_SIZE = WINDOW_SIZE // BOARD_SIZE
+GAME_SIZE = WINDOW_SIZE * 0.96
+CELL_SIZE = GAME_SIZE // BOARD_SIZE 
 STONE_RADIUS = CELL_SIZE // 2 - 2
 
-def draw_board(board: Board, screen):
 
+def draw_board(board: Board, screen):
     screen.fill(WHITE)
-    for i in range(BOARD_SIZE):
+    for i in range(BOARD_SIZE +1):
+
+
         pygame.draw.line(
             screen,
             GRAY,
@@ -54,20 +58,17 @@ def init_game():
     board = Board()
 
     pygame.init()
-    screen = pygame.display.set_mode((800,800))
+    screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
     pygame.display.set_caption("Gomoku AI")
-
+    print(print(board.board))
     run = True
 
     while run is True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-        draw_board(board, screen)
         # screen.fill("purple")
 
         # pygame.display.flip()
 
     pygame.quit()
-
-init_game() 
