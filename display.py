@@ -167,7 +167,7 @@ def init_game():
         draw_board(board, screen, img1, img2)
         # screen.fill(WHITE)
         # message = "Red turn." if game.player_turn == 2 else "Black turn."
-        message_couleur = "Red" if game.player_turn == 2 else "Black"
+        message_couleur = "White" if game.player_turn == 2 else "Black"
         color = RED if message_couleur == "Red" else BLACK
 
         texte_partie1 = font_big.render(message_couleur, True, color)
