@@ -53,9 +53,6 @@ def menu_screen(screen, font, game: Game, event):
         WINDOW_SIZE // 2 + 50,
     )
     pygame.display.flip()
-    # for event in pygame.event.get():
-    img1 = None
-    img2 = None
 
     if event.type == pygame.MOUSEBUTTONDOWN:
         if rect1.collidepoint(event.pos):
@@ -97,7 +94,7 @@ def menu_screen(screen, font, game: Game, event):
     #             return "friend"
 
 
-def draw_board(board: Board, screen, game : Game, img1 = None, img2 = None):
+def draw_board(board: Board, screen, game : Game):
     screen.fill(WHITE)
 
     for i in range(BOARD_SIZE + 1):
