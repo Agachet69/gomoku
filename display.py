@@ -1,8 +1,10 @@
 import pygame
 from Board import Board, BOARD_SIZE
 from game import Game
+from player import Player
+from game_state_enum import GameState
 import sys
-
+import time
 
 WHITE = (240, 240, 240)
 BLACK = (20, 20, 20)
@@ -22,16 +24,14 @@ def draw_text(screen, text, font, x, y):
     label = font.render(text, True, BLACK)
     rect = label.get_rect(center=(x, y))
     screen.blit(label, rect)
+    return rect
 
 
 def get_grid_position(mouse_pos):
     mx, my = mouse_pos
     mx -= (WINDOW_SIZE - GAME_SIZE) / 2
-
     my -= (WINDOW_SIZE - GAME_SIZE) / 2
 
-    print(mx)
-    print(my)
     x = int(mx // CELL_SIZE)
     y = int(my // CELL_SIZE)
     if x > 18 or y > 18:
@@ -39,39 +39,65 @@ def get_grid_position(mouse_pos):
     return x, y
 
 
-def menu_screen(screen, font):
-    while True:
-        screen.fill(WHITE)
-        draw_text(
-            screen, "Bienvenue sur Gomoku", font, WINDOW_SIZE // 2, WINDOW_SIZE // 4
-        )
-        draw_text(
-            screen, "1. Jouer contre une IA", font, WINDOW_SIZE // 2, WINDOW_SIZE // 2
-        )
-        draw_text(
-            screen,
-            "2. Jouer contre un ami",
-            font,
-            WINDOW_SIZE // 2,
-            WINDOW_SIZE // 2 + 50,
-        )
-        pygame.display.flip()
+def menu_screen(screen, font, game: Game, event):
+    screen.fill(WHITE)
+    draw_text(screen, "Bienvenue sur Gomoku", font, WINDOW_SIZE // 2, WINDOW_SIZE // 4)
+    rect1 = draw_text(
+        screen, "1. Jouer contre une IA", font, WINDOW_SIZE // 2, WINDOW_SIZE // 2
+    )
+    rect2 = draw_text(
+        screen,
+        "2. Prevoir l'avenir",
+        font,
+        WINDOW_SIZE // 2,
+        WINDOW_SIZE // 2 + 50,
+    )
+    pygame.display.flip()
+    # for event in pygame.event.get():
+    img1 = None
+    img2 = None
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                # print(event.key)
-                # print(pygame.K_1)
-                # print(pygame.K_2)
-                if event.key == pygame.K_1:
-                    return "ai"
-                elif event.key == pygame.K_2:
-                    return "friend"
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        if rect1.collidepoint(event.pos):
+            img_black = pygame.image.load("./assets/black.png").convert_alpha()
+            img_white = pygame.image.load("./assets/white.png").convert_alpha()
+            black = pygame.transform.smoothscale(img_black, (CELL_SIZE, CELL_SIZE))
+            white = pygame.transform.smoothscale(img_white, (CELL_SIZE, CELL_SIZE))
+            P1 = Player(black, "Black", 1)
+            P2 = Player(white, "White", 2)
+            game.set_players(P1, P2)
+            game.game_state = GameState.Playing
+            print("→ Lancement du jeu")
 
 
-def draw_board(board: Board, screen, img1 = None, img2 = None):
+        elif rect2.collidepoint(event.pos):
+            img_marseille = pygame.image.load("./assets/marseille.png").convert_alpha()
+            img_psg = pygame.image.load("./assets/psg.png").convert_alpha()
+            marseille = pygame.transform.smoothscale(img_marseille, (CELL_SIZE, CELL_SIZE))
+            psg = pygame.transform.smoothscale(img_psg, (CELL_SIZE, CELL_SIZE))
+            P1 = Player(marseille, "Marseille", 1)
+            P2 = Player(psg, "PSG", 2)
+            game.set_players(P1, P2)
+            game.game_state = GameState.Playing
+            print("→ Avenir en lecture..")
+
+    # return img1, img2
+    #         return
+    # waiting = False
+    # init_game()
+
+    # for event in pygame.event.get():
+    #     if event.type == pygame.QUIT:
+    #         pygame.quit()
+    #         sys.exit()
+    #     elif event.type == pygame.KEYDOWN:
+    #         if event.key == pygame.K_1:
+    #             return "ai"
+    #         elif event.key == pygame.K_2:
+    #             return "friend"
+
+
+def draw_board(board: Board, screen, game : Game, img1 = None, img2 = None):
     screen.fill(WHITE)
 
     for i in range(BOARD_SIZE + 1):
@@ -95,41 +121,20 @@ def draw_board(board: Board, screen, img1 = None, img2 = None):
             val = board.board[y, x]
             img = None
             if val == 1:
-                img = img1
+                img = game.P1.img_path
             elif val == 2:
-                img = img2
+                img = game.P2.img_path
 
             if img:
                 px = (WINDOW_SIZE - GAME_SIZE) / 2 + x * CELL_SIZE
                 py = (WINDOW_SIZE - GAME_SIZE) / 2 + y * CELL_SIZE
                 screen.blit(img, (px, py))
-            # if val == 1:
-            #     pygame.draw.circle(
-            #         screen,
-            #         BLACK,
-            #         (
-            #             (WINDOW_SIZE - GAME_SIZE) / 2 + (x + 0.5) * CELL_SIZE,
-            #             (WINDOW_SIZE - GAME_SIZE) / 2 + (y + 0.5) * CELL_SIZE,
-            #         ),
-            #         STONE_RADIUS,
-            #     )
-            # elif val == 2:
-            #     pygame.draw.circle(
-            #         screen,
-            #         RED,
-            #         (
-            #             (WINDOW_SIZE - GAME_SIZE) / 2 + (x + 0.5) * CELL_SIZE,
-            #             (WINDOW_SIZE - GAME_SIZE) / 2 + (y + 0.5) * CELL_SIZE,
-            #         ),
-            #         STONE_RADIUS,
-            #     )
-
-    # pygame.display.flip()
 
 
 def init_game():
     game = Game(1)
     board = Board()
+    game.set_board(board)
     print(WINDOW_SIZE)
     pygame.init()
 
@@ -137,41 +142,70 @@ def init_game():
     font_big = pygame.font.SysFont(None, 56)
 
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
-    image = pygame.image.load("./assets/black2.png").convert_alpha()
-    image2 = pygame.image.load("./assets/white.png").convert_alpha()
-    img1 = pygame.transform.smoothscale(image, (CELL_SIZE, CELL_SIZE))
-    img2 = pygame.transform.smoothscale(image2, (CELL_SIZE, CELL_SIZE))
-    # screen.blit(resized_img, (50, 50))
-    # screen.blit(resized_img2, (150, 50))
+    # image = pygame.image.load("./assets/black.png").convert_alpha()
+    # image2 = pygame.image.load("./assets/white.png").convert_alpha()
+    # img1 = pygame.transform.smoothscale(image, (CELL_SIZE, CELL_SIZE))
+    # img2 = pygame.transform.smoothscale(image2, (CELL_SIZE, CELL_SIZE))
+
     pygame.display.set_caption("Gomoku AI")
-    # mode = menu_screen(screen, font)
-    print(print(board.board))
     run = True
 
     while run is True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = get_grid_position(pygame.mouse.get_pos())
-                print(x, y)
-                # if
-                board.play_move(game, x, y)
+            elif game.game_state == GameState.Creating:
+                menu_screen(screen, font, game, event)
+            elif game.game_state == GameState.Playing:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = get_grid_position(pygame.mouse.get_pos())
+                    board.play_moove(game, x, y)
 
-                # if board.is_winning_move(x, y, player):
+                message_couleur = "White" if game.player_turn == 2 else "Black"
+                color = RED if message_couleur == "Red" else BLACK
+
+                texte_partie1 = font_big.render(message_couleur, True, color)
+                texte_partie2 = font_big.render(" turn.", True, BLACK)
+                width_text = texte_partie2.get_width()
+                draw_board(board, screen, game)
+                screen.blit(texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100))
+                screen.blit(
+                    texte_partie2,
+                    (
+                        WINDOW_SIZE / 2 - width_text + texte_partie1.get_width(),
+                        WINDOW_SIZE - 100,
+                    ),
+                )
+                pygame.display.flip()
+
+            elif game.game_state == GameState.Finish:
+                # message_couleur = "White" if game.player_turn == 2 else "Black"
+                # color = RED if message_couleur == "Red" else BLACK
+
+                texte_partie1 = font_big.render(game.winner.name, True, color)
+                texte_partie2 = font_big.render(" Victoire.", True, BLACK)
+                width_text = texte_partie2.get_width()
+                # draw_board(board, screen, img1, img2)
+                screen.blit(
+                    texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100)
+                )
+                screen.blit(
+                    texte_partie2,
+                    (
+                        WINDOW_SIZE / 2 - width_text + texte_partie1.get_width(),
+                        WINDOW_SIZE / 2,
+                    ),
+                )
+
+
+
+            # if board.is_winning_move(x, y, player):
                 # print(f"Player {player} wins!")
                 # running = False
                 # if mode == "friend":
                 # player = P2 if player == P1 else P1
-        # screen.fill("purple")
-        draw_board(board, screen, img1, img2)
         # screen.fill(WHITE)
         # message = "Red turn." if game.player_turn == 2 else "Black turn."
-        message_couleur = "White" if game.player_turn == 2 else "Black"
-        color = RED if message_couleur == "Red" else BLACK
-
-        texte_partie1 = font_big.render(message_couleur, True, color)
-        texte_partie2 = font_big.render(" turn.", True, BLACK)
 
         # texte_surface = font.render(message, True, BLACK)
 
@@ -179,7 +213,6 @@ def init_game():
         # padding_y = 5
 
         # total_width = texte_partie1.get_width() + texte_partie2.get_width()
-        width_text = texte_partie2.get_width()
         # total_height = texte_partie1.get_height()
 
         # Rectangle de fond plus large que le texte
@@ -199,14 +232,6 @@ def init_game():
         # )
         # screen.blit(texte_surface, (PADDING, 20))
         # x, y = 50, 50
-        screen.blit(texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100))
-        screen.blit(
-            texte_partie2,
-            (
-                WINDOW_SIZE / 2 - width_text + texte_partie1.get_width(),
-                WINDOW_SIZE - 100,
-            ),
-        )
         # screen.blit(texte_surface, (50, 50))
         pygame.display.flip()
         # clock.tick(60)
