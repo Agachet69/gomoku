@@ -179,22 +179,33 @@ def init_game():
                 # message_couleur = "White" if game.player_turn == 2 else "Black"
                 # color = RED if message_couleur == "Red" else BLACK
 
-                texte_partie1 = font_big.render(game.winner.name, True, color)
-                texte_partie2 = font_big.render(" Victoire.", True, BLACK)
-                width_text = texte_partie2.get_width()
-                # draw_board(board, screen, img1, img2)
-                screen.blit(
-                    texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100)
-                )
-                screen.blit(
-                    texte_partie2,
-                    (
-                        WINDOW_SIZE / 2 - width_text + texte_partie1.get_width(),
-                        WINDOW_SIZE / 2,
-                    ),
-                )
+                # winner_name = font_big.render(game.winner.name, True, color)
+                # texte_partie2 = font_big.render(" WIN.", True, BLACK)
+                # width_text = texte_partie2.get_width()
+                # screen.blit(
+                #     winner_name, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE / 2)
+                # )
+                # screen.blit(
+                #     texte_partie2,
+                #     (
+                #         WINDOW_SIZE / 2 - width_text + winner_name.get_width(),
+                #         WINDOW_SIZE / 2,
+                #     ),
+                # )
 
+                winner_name = font_big.render(game.winner.name, True, color)
 
+                rect = pygame.Rect(
+                    WINDOW_SIZE / 2 - width_text, WINDOW_SIZE / 2, width_text + 20, 50
+                )
+                pygame.draw.rect(screen, (180, 180, 180), rect)  # Gris clair
+
+                # font = pygame.font.SysFont(None, 32)
+                text = font.render(" WIN", True, (0, 0, 0))  # Texte noir
+                text_rect = text.get_rect(center=rect.center)
+                screen.blit(text, text_rect)
+                
+                pygame.display.flip()
 
             # if board.is_winning_move(x, y, player):
                 # print(f"Player {player} wins!")
