@@ -12,6 +12,7 @@ GRAY = (200, 200, 200)
 GRAY_RECT = (218, 218, 218)
 BLUE = (66, 135, 245)
 RED = (176, 23, 23)
+GOBAN = (221, 180, 92)
 
 CELL_SIZE = 50
 GAME_SIZE = CELL_SIZE * BOARD_SIZE
@@ -19,6 +20,12 @@ WINDOW_SIZE = GAME_SIZE * 1.3
 STONE_RADIUS = CELL_SIZE // 2 - 5
 PADDING = (WINDOW_SIZE - GAME_SIZE) / 2
 
+def get_fonts():
+    fonts = {}
+    fonts["font"] = pygame.font.SysFont(None, 36)
+    fonts["font_big"] = pygame.font.SysFont(None, 56)
+
+    return fonts
 
 def draw_text(screen, text, font, x, y):
     label = font.render(text, True, BLACK)
@@ -40,7 +47,7 @@ def get_grid_position(mouse_pos):
 
 
 def menu_screen(screen, font, game: Game, event):
-    screen.fill(WHITE)
+    screen.fill(GOBAN)
     draw_text(screen, "Bienvenue sur Gomoku", font, WINDOW_SIZE // 2, WINDOW_SIZE // 4)
     rect1 = draw_text(
         screen, "1. Jouer contre une IA", font, WINDOW_SIZE // 2, WINDOW_SIZE // 2
@@ -66,11 +73,12 @@ def menu_screen(screen, font, game: Game, event):
             game.game_state = GameState.Playing
             print("→ Lancement du jeu")
 
-
         elif rect2.collidepoint(event.pos):
             img_marseille = pygame.image.load("./assets/marseille.png").convert_alpha()
             img_psg = pygame.image.load("./assets/psg.png").convert_alpha()
-            marseille = pygame.transform.smoothscale(img_marseille, (CELL_SIZE, CELL_SIZE))
+            marseille = pygame.transform.smoothscale(
+                img_marseille, (CELL_SIZE, CELL_SIZE)
+            )
             psg = pygame.transform.smoothscale(img_psg, (CELL_SIZE, CELL_SIZE))
             P1 = Player(marseille, "Marseille", 1)
             P2 = Player(psg, "PSG", 2)
@@ -94,20 +102,20 @@ def menu_screen(screen, font, game: Game, event):
     #             return "friend"
 
 
-def draw_board(board: Board, screen, game : Game):
-    screen.fill(WHITE)
+def draw_board(board: Board, screen, game: Game):
+    screen.fill(GOBAN)
 
     for i in range(BOARD_SIZE + 1):
         pygame.draw.line(
             screen,
-            GRAY,
+            BLACK,
             (PADDING, PADDING + (CELL_SIZE * i)),
             (PADDING + CELL_SIZE * 19, PADDING + (CELL_SIZE * i)),
             1,
         )
         pygame.draw.line(
             screen,
-            GRAY,
+            BLACK,
             (PADDING + (CELL_SIZE * i), PADDING),
             (PADDING + (CELL_SIZE * i), PADDING + (CELL_SIZE * 19)),
             1,
@@ -128,44 +136,87 @@ def draw_board(board: Board, screen, game : Game):
                 screen.blit(img, (px, py))
 
 
+def text_box(text: str, text_color: str, position: str = "center"):
+    print()
+
+def draw_finish_modal(screen, game, fonts, event):
+    screen_rect = screen.get_rect()
+    box_width, box_height = 500, 300
+    box_rect = pygame.Rect(0, 0, box_width, box_height)
+    box_rect.center = screen_rect.center
+
+    text = f"{game.winner.name} WIN"
+    text_surface = fonts["font_big"].render(text, True, BLACK)
+    text_rect = text_surface.get_rect(
+        center=(box_rect.centerx, box_rect.top + 60)
+    )
+
+    replay_surface = fonts["font"].render("Rejouer", True, BLACK)
+    menu_surface = fonts["font"].render("Menu principal", True, BLACK)
+
+    max_text_width = max(
+        replay_surface.get_width(), menu_surface.get_width()
+    )
+    button_width = max_text_width + 40
+    button_height = replay_surface.get_height() + 20
+
+    replay_rect = pygame.Rect(0, 0, button_width, button_height)
+    replay_rect.center = (box_rect.centerx, box_rect.top + 160)
+
+    menu_rect = pygame.Rect(0, 0, button_width, button_height)
+    menu_rect.center = (box_rect.centerx, box_rect.top + 230)
+
+    pygame.draw.rect(screen, WHITE, box_rect, border_radius=15)
+    pygame.draw.rect(screen, GRAY, replay_rect, border_radius=14)
+    pygame.draw.rect(screen, GRAY, menu_rect, border_radius=14)
+    screen.blit(text_surface, text_rect)
+    screen.blit(replay_surface, replay_surface.get_rect(center=replay_rect.center))
+    screen.blit(menu_surface, menu_surface.get_rect(center=menu_rect.center))
+    pygame.display.flip()
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        if replay_rect.collidepoint(event.pos):
+            game.replay()
+        elif menu_rect.collidepoint(event.pos):
+            game.menu()
+
+
 def init_game():
-    game = Game(1)
-    board = Board()
-    game.set_board(board)
-    print(WINDOW_SIZE)
     pygame.init()
 
-    font = pygame.font.SysFont(None, 36)
-    font_big = pygame.font.SysFont(None, 56)
+    game = Game(1)
+    fonts = get_fonts()
 
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
+    pygame.display.set_caption("Gomoku AI")
     # image = pygame.image.load("./assets/black.png").convert_alpha()
     # image2 = pygame.image.load("./assets/white.png").convert_alpha()
     # img1 = pygame.transform.smoothscale(image, (CELL_SIZE, CELL_SIZE))
     # img2 = pygame.transform.smoothscale(image2, (CELL_SIZE, CELL_SIZE))
 
-    pygame.display.set_caption("Gomoku AI")
-    run = True
-
-    while run is True:
+    while game.program_run is True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                run = False
+                game.exit()
+                break
+
             elif game.game_state == GameState.Creating:
-                menu_screen(screen, font, game, event)
+                menu_screen(screen, fonts["font"], game, event)
             elif game.game_state == GameState.Playing:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = get_grid_position(pygame.mouse.get_pos())
-                    board.play_moove(game, x, y)
+                    game.board.play_moove(game, x, y)
 
+                draw_board(game.board, screen, game)
                 message_couleur = "White" if game.player_turn == 2 else "Black"
                 color = RED if message_couleur == "Red" else BLACK
 
-                texte_partie1 = font_big.render(message_couleur, True, color)
-                texte_partie2 = font_big.render(" turn.", True, BLACK)
+                texte_partie1 = fonts["font_big"].render(message_couleur, True, color)
+                texte_partie2 = fonts["font_big"].render(" turn.", True, BLACK)
                 width_text = texte_partie2.get_width()
-                draw_board(board, screen, game)
-                screen.blit(texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100))
+                screen.blit(
+                    texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100)
+                )
                 screen.blit(
                     texte_partie2,
                     (
@@ -176,71 +227,8 @@ def init_game():
                 pygame.display.flip()
 
             elif game.game_state == GameState.Finish:
-                # message_couleur = "White" if game.player_turn == 2 else "Black"
-                # color = RED if message_couleur == "Red" else BLACK
+                draw_finish_modal(screen, game, fonts, event)
 
-                # winner_name = font_big.render(game.winner.name, True, color)
-                # texte_partie2 = font_big.render(" WIN.", True, BLACK)
-                # width_text = texte_partie2.get_width()
-                # screen.blit(
-                #     winner_name, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE / 2)
-                # )
-                # screen.blit(
-                #     texte_partie2,
-                #     (
-                #         WINDOW_SIZE / 2 - width_text + winner_name.get_width(),
-                #         WINDOW_SIZE / 2,
-                #     ),
-                # )
-
-                winner_name = font_big.render(game.winner.name, True, color)
-
-                rect = pygame.Rect(
-                    WINDOW_SIZE / 2 - width_text, WINDOW_SIZE / 2, width_text + 20, 50
-                )
-                pygame.draw.rect(screen, (180, 180, 180), rect)  # Gris clair
-
-                # font = pygame.font.SysFont(None, 32)
-                text = font.render(" WIN", True, (0, 0, 0))  # Texte noir
-                text_rect = text.get_rect(center=rect.center)
-                screen.blit(text, text_rect)
-                
-                pygame.display.flip()
-
-            # if board.is_winning_move(x, y, player):
-                # print(f"Player {player} wins!")
-                # running = False
-                # if mode == "friend":
-                # player = P2 if player == P1 else P1
-        # screen.fill(WHITE)
-        # message = "Red turn." if game.player_turn == 2 else "Black turn."
-
-        # texte_surface = font.render(message, True, BLACK)
-
-        # padding_x = 10
-        # padding_y = 5
-
-        # total_width = texte_partie1.get_width() + texte_partie2.get_width()
-        # total_height = texte_partie1.get_height()
-
-        # Rectangle de fond plus large que le texte
-        # bg_rect = pygame.Rect(
-        #     PADDING - padding_x,
-        #     20 - padding_y,
-        #     total_width + 2 * padding_x,
-        #     total_height + 2 * padding_y,
-        # )
-        # pygame.draw.rect(
-        #     screen,
-        #     GRAY_RECT,
-        #     bg_rect,
-        #     # texte_surface.get_rect(topleft=(PADDING, 20)),
-        #     border_radius=10,
-        #     # width=50
-        # )
-        # screen.blit(texte_surface, (PADDING, 20))
-        # x, y = 50, 50
-        # screen.blit(texte_surface, (50, 50))
         pygame.display.flip()
         # clock.tick(60)
         # pygame.display.flip()
