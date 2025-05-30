@@ -20,12 +20,14 @@ WINDOW_SIZE = GAME_SIZE * 1.3
 STONE_RADIUS = CELL_SIZE // 2 - 5
 PADDING = (WINDOW_SIZE - GAME_SIZE) / 2
 
+
 def get_fonts():
     fonts = {}
     fonts["font"] = pygame.font.SysFont(None, 36)
     fonts["font_big"] = pygame.font.SysFont(None, 56)
 
     return fonts
+
 
 def draw_text(screen, text, font, x, y):
     label = font.render(text, True, BLACK)
@@ -139,6 +141,7 @@ def draw_board(board: Board, screen, game: Game):
 def text_box(text: str, text_color: str, position: str = "center"):
     print()
 
+
 def draw_finish_modal(screen, game, fonts, event):
     screen_rect = screen.get_rect()
     box_width, box_height = 500, 300
@@ -147,16 +150,12 @@ def draw_finish_modal(screen, game, fonts, event):
 
     text = f"{game.winner.name} WIN"
     text_surface = fonts["font_big"].render(text, True, BLACK)
-    text_rect = text_surface.get_rect(
-        center=(box_rect.centerx, box_rect.top + 60)
-    )
+    text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
 
     replay_surface = fonts["font"].render("Rejouer", True, BLACK)
     menu_surface = fonts["font"].render("Menu principal", True, BLACK)
 
-    max_text_width = max(
-        replay_surface.get_width(), menu_surface.get_width()
-    )
+    max_text_width = max(replay_surface.get_width(), menu_surface.get_width())
     button_width = max_text_width + 40
     button_height = replay_surface.get_height() + 20
 
@@ -211,9 +210,25 @@ def init_game():
                 message_couleur = "White" if game.player_turn == 2 else "Black"
                 color = RED if message_couleur == "Red" else BLACK
 
+                msg_capture = f"{game.P1.name} Capture score"
+                msg_capture2 = f"{game.P2.name} Capture score"
+                text_captures = fonts["font"].render(msg_capture, True, BLACK)
+                text_captures2 = fonts["font"].render(msg_capture2, True, BLACK)
+
+                captures_number_P1 = f"{game.P1.capture_score}"
+                captures_number_P2 = f"{game.P2.capture_score}"
+
+                number_captures_P1 = fonts["font"].render(
+                    captures_number_P1, True, BLACK
+                )
+                number_captures_P2 = fonts["font"].render(
+                    captures_number_P2, True, BLACK
+                )
+
                 texte_partie1 = fonts["font_big"].render(message_couleur, True, color)
                 texte_partie2 = fonts["font_big"].render(" turn.", True, BLACK)
                 width_text = texte_partie2.get_width()
+
                 screen.blit(
                     texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100)
                 )
@@ -222,6 +237,35 @@ def init_game():
                     (
                         WINDOW_SIZE / 2 - width_text + texte_partie1.get_width(),
                         WINDOW_SIZE - 100,
+                    ),
+                )
+                screen.blit(
+                    text_captures,
+                    (
+                        WINDOW_SIZE / 8,
+                        WINDOW_SIZE - 100,
+                    ),
+                )
+                screen.blit(
+                    number_captures_P1,
+                    (
+                        WINDOW_SIZE / 8,
+                        WINDOW_SIZE - 70,
+                    ),
+                )
+
+                screen.blit(
+                    text_captures2,
+                    (
+                        WINDOW_SIZE * 0.8,
+                        WINDOW_SIZE - 100,
+                    ),
+                )
+                screen.blit(
+                    number_captures_P2,
+                    (
+                        WINDOW_SIZE * 0.8,
+                        WINDOW_SIZE - 70,
                     ),
                 )
                 pygame.display.flip()
