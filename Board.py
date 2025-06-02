@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from game_state_enum import GameState
+from player import Player
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -14,9 +15,9 @@ class Board:
         self.board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.uint8)
 
     def is_legal_moove(self, x, y):
-        if (x < 0 or y < 0):
+        if x < 0 or y < 0:
             return False
-        if (self.board[y, x] != 0):
+        if self.board[y, x] != 0:
             return False
         return True
         # print(self.board)
@@ -27,12 +28,21 @@ class Board:
             return False
         return True
 
-    def is_capture_moove(self, game: Game, my_player, my_opponent, x ,y):
-        directions = [(1, 0), (0, 1), (1, 1), (1, -1),(-1, 0), (0, -1), (-1, -1), (-1, 1)]
+    def is_capture_moove(self, game: Game, my_player, my_opponent, x, y):
+        directions = [
+            (1, 0),
+            (0, 1),
+            (1, 1),
+            (1, -1),
+            (-1, 0),
+            (0, -1),
+            (-1, -1),
+            (-1, 1),
+        ]
         new_board = game.board.board.copy()
         player = game.P1 if my_player == game.P1.value else game.P2
 
-        for (dy, dx) in directions:
+        for dy, dx in directions:
             stones = 0
             pos_y, pos_x = y + dy, x + dx
             while (
@@ -44,7 +54,6 @@ class Board:
                 pos_x += dx
 
             if stones == 2 and self.board[pos_y, pos_x] == player.value:
-
                 pos_y -= dy
                 pos_x -= dx
 
@@ -52,50 +61,105 @@ class Board:
                 new_board[pos_y, pos_x] = 0
                 new_board[pos_y - dy, pos_x - dx] = 0
                 print(f"{player.value} score : {player.capture_score}")
-
         self.update_board(new_board)
 
+        return player
 
-    def is_winner_moove(self, player, x ,y):
+    def can_be_captured(self, dx, dy, extremity_x ,extremity_y, player, opponent_value):
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
 
-        for (dy, dx) in directions:
+        for dy, dx in directions:
             stones = 1
+            extremity_one = None
+            extremity_two = None
+            pos_y, pos_x = y + dy, x + dx
+
+            while stones <= 2 and self.is_on_board(pos_x, pos_y):
+                if self.board[pos_y, pos_x] == player.value:
+                    stones += 1
+                    pos_y += dy
+                    pos_x += dx
+                else:
+                    extremity_one = self.board[pos_y, pos_x]
+
+            pos_y, pos_x = y - dy, x - dx
+
+            while stones <= 2 and self.is_on_board(pos_x, pos_y):
+                if self.board[pos_y, pos_x] == player.value:
+                    stones += 1
+                    pos_y -= dy
+                    pos_x -= dx
+                else:
+                    extremity_two = self.board[pos_y, pos_x]
+
+            if stones == 2 and extremity_one is not None and extremity_two is not None:
+                if extremity_one == opponent_value and extremity_two == opponent_value:
+                    continue
+                else:
+                    print("Be capt")
+                    return True
+        return False
+
+    def is_winner_moove(self, player: Player, x, y, game: Game):
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+
+        if player.capture_score >= 10:
+            return True
+
+        for dy, dx in directions:
+            game.win_if_not_captured = False
+            stones = 1
+            reverse_mode = 0
 
             pos_y, pos_x = y + dy, x + dx
-            while stones < 5 and self.is_on_board(pos_x, pos_y) and self.board[pos_y, pos_x] == player:
+            while (
+                stones < 5
+                and self.is_on_board(pos_x, pos_y)
+                and self.board[pos_y, pos_x] == player.value
+            ):
                 stones += 1
                 pos_y += dy
                 pos_x += dx
 
-            pos_y, pos_x = y - dy, x - dx
-            while stones < 5 and self.is_on_board(pos_x, pos_y) and self.board[pos_y, pos_x] == player:
+            if stones < 5:
+                reverse_mode = 1
+                pos_y, pos_x = y - dy, x - dx
+                
+            while (
+                stones < 5
+                and self.is_on_board(pos_x, pos_y)
+                and self.board[pos_y, pos_x] == player.value
+            ):
                 stones += 1
                 pos_y -= dy
                 pos_x -= dx
 
             if stones >= 5:
+                for _ in enumerate(5):
+                    self.can_be_captured(pos_x, pos_y)
+                    if reverse_mode == 0:
+                        pos_x, pos_y = y - dy, x - dx
+                    else: 
+                        pos_x, pos_y = y + dy, x + dx
+
                 return True
             
-    def play_moove(self, game : Game, x, y):
+        game.win_if_not_captured = False
+        return False
+
+    def play_moove(self, game: Game, x, y):
         if self.is_legal_moove(x, y):
             opponent_value = game.get_opponent()
             my_player_value = game.get_me()
-            self.is_capture_moove(game, my_player_value, opponent_value, x, y)
-            player = game.has_played()
-            self.board[y, x] = player
-            if player == 1:
-                game.P1.mooves += 1
-            else:
-                game.P2.mooves += 1
-            if self.is_winner_moove(player, x, y):
-                if player == game.P1.value:
-                    game.winner = game.P1
-                else:
-                    game.winner = game.P2
+            player = self.is_capture_moove(game, my_player_value, opponent_value, x, y)
+            player_value = game.has_played()
+            self.board[y, x] = player.value
+
+            if self.is_winner_moove(player, x, y, game):
+                game.winner = player
                 game.game_state = GameState.Finish
         else:
-            print('Illegal moove.')
+            print("Illegal moove.")
 
     def update_board(self, new_board):
         self.board = new_board

@@ -8,6 +8,7 @@ class Game:
         self.game_state = GameState.Creating
         self.player_turn = player
         self.winner = None
+        self.win_if_not_captured = False
         self.program_run = True
 
     def set_players(self, P1: Player, P2: Player):
