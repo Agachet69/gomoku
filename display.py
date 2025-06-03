@@ -6,6 +6,8 @@ from game_state_enum import GameState
 import sys
 import time
 
+from thread import init_threads
+
 WHITE = (240, 240, 240)
 BLACK = (20, 20, 20)
 GRAY = (200, 200, 200)
@@ -74,6 +76,7 @@ def menu_screen(screen, font, game: Game, event):
             game.set_players(P1, P2)
             game.game_state = GameState.Playing
             print("→ Lancement du jeu")
+            init_threads(game)
 
         elif rect2.collidepoint(event.pos):
             img_marseille = pygame.image.load("./assets/marseille.png").convert_alpha()
@@ -180,7 +183,6 @@ def draw_finish_modal(screen, game: Game, fonts, event):
         elif menu_rect.collidepoint(event.pos):
             game.menu()
 
-
 def init_game():
     pygame.init()
 
@@ -194,7 +196,7 @@ def init_game():
     # img1 = pygame.transform.smoothscale(image, (CELL_SIZE, CELL_SIZE))
     # img2 = pygame.transform.smoothscale(image2, (CELL_SIZE, CELL_SIZE))
 
-    while game.program_run is True:
+    while game.get_program_run() is True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game.exit()
