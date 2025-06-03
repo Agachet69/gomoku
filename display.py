@@ -138,19 +138,20 @@ def draw_board(board: Board, screen, game: Game):
                 screen.blit(img, (px, py))
 
 
-def text_box(text: str, text_color: str, position: str = "center"):
-    print()
-
-
-def draw_finish_modal(screen, game, fonts, event):
+def draw_finish_modal(screen, game: Game, fonts, event):
     screen_rect = screen.get_rect()
     box_width, box_height = 500, 300
     box_rect = pygame.Rect(0, 0, box_width, box_height)
     box_rect.center = screen_rect.center
 
-    text = f"{game.winner.name} WIN"
-    text_surface = fonts["font_big"].render(text, True, BLACK)
-    text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
+    if game.game_state == GameState.Finish:
+        text = f"{game.winner.name} WIN"
+        text_surface = fonts["font_big"].render(text, True, BLACK)
+        text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
+    else:
+        text = "IT'S A DRAW"
+        text_surface = fonts["font_big"].render(text, True, BLACK)
+        text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
 
     replay_surface = fonts["font"].render("Rejouer", True, BLACK)
     menu_surface = fonts["font"].render("Menu principal", True, BLACK)
@@ -270,8 +271,11 @@ def init_game():
                 )
                 pygame.display.flip()
 
-            elif game.game_state == GameState.Finish:
+            elif (
+                game.game_state == GameState.Finish or game.game_state == GameState.Draw
+            ):
                 draw_finish_modal(screen, game, fonts, event)
+
 
         pygame.display.flip()
         # clock.tick(60)
