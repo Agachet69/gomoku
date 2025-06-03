@@ -59,3 +59,17 @@ class Game:
 
     def get_winner(self):
         return self.winner
+
+    def copy(self):
+        new_game = Game(self.player_turn)
+        new_game.game_state = self.game_state
+        new_game.winner = (
+            self.P1.deep_copy() if self.winner == self.P1 else
+            self.P2.deep_copy() if self.winner == self.P2 else None
+        )
+        new_game.program_run = self.program_run
+        new_game.P1 = self.P1.deep_copy() if self.P1 else None
+        new_game.P2 = self.P2.deep_copy() if self.P2 else None
+        new_game.board = self.board.deep_copy()
+
+        return new_game

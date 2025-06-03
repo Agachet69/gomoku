@@ -74,7 +74,7 @@ def menu_screen(screen, font, game: Game, event):
             P1 = Player(black, "Black", 1)
             P2 = Player(white, "White", 2)
             game.set_players(P1, P2)
-            game.set_game_state(GameState.Playing)
+            game.game_state = GameState.Playing
             print("→ Lancement du jeu")
             init_threads(game)
 
@@ -88,7 +88,7 @@ def menu_screen(screen, font, game: Game, event):
             P1 = Player(marseille, "Marseille", 1)
             P2 = Player(psg, "PSG", 2)
             game.set_players(P1, P2)
-            game.set_game_state(GameState.Playing)
+            game.game_state = GameState.Playing
             print("→ Avenir en lecture..")
 
     # return img1, img2
@@ -182,37 +182,10 @@ def draw_finish_modal(screen, game, fonts, event):
         elif menu_rect.collidepoint(event.pos):
             game.menu()
 
-
-from multiprocessing.managers import BaseManager
-from game import Game
-
-class GameManager(BaseManager): pass
-
-GameManager.register(
-    'Game',
-    Game,
-    exposed=(
-        'set_players',
-        'has_played',
-        'get_game_state',
-        'get_program_run',
-        'set_program_run',
-        'exit',
-        'replay',
-        'menu',
-        'get_winner',
-        'get_board',
-        'get_opponent',
-        'get_me',
-    )
-)
-
 def init_game():
     pygame.init()
 
-    manager = GameManager()
-    manager.start()
-    game = manager.Game(1)
+    game = Game(1)
     fonts = get_fonts()
 
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
@@ -228,9 +201,9 @@ def init_game():
                 game.exit()
                 break
 
-            elif game.get_game_state() == GameState.Creating:
+            elif game.game_state == GameState.Creating:
                 menu_screen(screen, fonts["font"], game, event)
-            elif game.get_game_state() == GameState.Playing:
+            elif game.game_state == GameState.Playing:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)
@@ -299,7 +272,7 @@ def init_game():
                 )
                 pygame.display.flip()
 
-            elif game.get_game_state() == GameState.Finish:
+            elif game.game_state == GameState.Finish: 
                 draw_finish_modal(screen, game, fonts, event)
 
         pygame.display.flip()

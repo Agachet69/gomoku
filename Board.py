@@ -12,6 +12,7 @@ BOARD_SIZE = 19
 class Board:
     def __init__(self):
         self.board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.uint8)
+        self.human_best_moves = []
 
     def is_legal_moove(self, x, y):
         if (x < 0 or y < 0):
@@ -87,15 +88,21 @@ class Board:
             if player == 1:
                 game.P1.mooves += 1
             else:
+                self.human_best_moves = []
                 game.P2.mooves += 1
             if self.is_winner_moove(player, x, y):
                 if player == game.P1.value:
                     game.winner = game.P1
                 else:
                     game.winner = game.P2
-                game.set_game_state(GameState.Finish)
+                game.game_state = GameState.Finish
         else:
             print('Illegal moove.')
 
     def update_board(self, new_board):
         self.board = new_board
+    
+    def deep_copy(self):
+        new_board = Board()
+        new_board.board = self.board.copy()
+        return new_board
