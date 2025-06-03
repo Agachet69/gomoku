@@ -93,7 +93,7 @@ class Board:
                     game.winner = game.P1
                 else:
                     game.winner = game.P2
-                game.game_state = GameState.Finish
+                game.set_game_state(GameState.Finish)
         else:
             print('Illegal moove.')
 
