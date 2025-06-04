@@ -25,8 +25,91 @@ class Board:
         return True
 
     def is_double_three(self, x, y, game: Game):
-        print(game.player_turn)
+        player_value = game.get_me_value()
+        opponent_value = game.get_opponent_value()
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        board = game.board.board
+        three_number = 0
 
+        for dx, dy in directions:
+            can_be_three = True
+            deepth = 1
+            empty = 0
+            # first_empty = 0
+            # second_empty = 0
+            stones = 1
+
+            pos_y, pos_x = y + dy, x + dx
+            while self.is_on_board(pos_x, pos_y) and empty <= 1 and deepth <= 4:
+                position_value = board[pos_y, pos_x]
+                
+                if position_value == player_value:
+                    stones += 1
+
+
+                if deepth < 3 and position_value == opponent_value:
+                    can_be_three = False
+                    print("False double three")
+                    break
+
+                # if position_value == 0:
+                #     first_empty += 1
+                
+                
+                
+                
+                
+                
+                # if stones == 3 and board[pos_y, pos_x] == opponent_value:
+                #     print('three blocked')
+                #     can_be_three = False
+                #     break
+
+
+                deepth +=1
+                pos_x += dx
+                pos_y += dy
+
+            # if stones == 3 and not self.is_on_board(pos_x, pos_y):
+            #     print("three blocked")
+            #     can_be_three = False
+
+            empty = 0
+            deepth = 0
+            pos_y, pos_x = y - dy, x - dx
+            while (
+                can_be_three is True
+                and self.is_on_board(pos_x, pos_y)
+                and empty <= 1
+                and deepth <= 4
+            ):
+                position_value = board[pos_y, pos_x]
+                if position_value == player_value:
+                    stones += 1
+
+
+                if deepth < 3 and position_value == opponent_value:
+                    can_be_three = False
+                    print("False double three")
+                    break
+
+                # if position_value == 0:
+                #     second_empty += 1
+
+                deepth +=1
+                pos_x -= dx
+                pos_y -= dy
+
+            
+            
+            if can_be_three is True and stones == 3:
+                print(' three')
+                three_number += 1
+        if three_number > 1:
+            print('double three')
+            return True
+        return False
+    
 
     def is_on_board(self, x, y):
         if x < 0 or y < 0 or x >= BOARD_SIZE or y >= BOARD_SIZE:

@@ -139,7 +139,7 @@ def thread_opponent(game: Game):
 
             
         game.board.human_best_moves = [move for move, _ in sorted(list(zip(moves, move_score)), key=lambda x: x[1], reverse=True)[:NUMBER_BEST_MOVES]]
-        print(game.board.human_best_moves)
+        # print(game.board.human_best_moves)
         # print(f"Coups possibles : {coups}")
         # if best_move:
         #     print(best_move)
@@ -150,7 +150,7 @@ def thread_opponent(game: Game):
         # minmax(game.board.board)
 
         elapsed = time.time() - start_time  # Fin du chrono
-        print(f"Temps total de l'itération : {elapsed:.3f} secondes")
+        # print(f"Temps total de l'itération : {elapsed:.3f} secondes")
 
 
 def thread_AI(game: Game):
@@ -181,7 +181,7 @@ def thread_AI(game: Game):
 
             
         game.board.human_best_moves = [move for move, _ in sorted(list(zip(moves, move_score)), key=lambda x: x[1], reverse=True)[:NUMBER_BEST_MOVES]]
-        print(game.board.human_best_moves)
+        # print(game.board.human_best_moves)
         # print(f"Coups possibles : {coups}")
         # if best_move:
         #     print(best_move)
@@ -192,7 +192,7 @@ def thread_AI(game: Game):
         # minmax(game.board.board)
 
         elapsed = time.time() - start_time  # Fin du chrono
-        print(f"Temps total de l'itération : {elapsed:.3f} secondes")
+        # print(f"Temps total de l'itération : {elapsed:.3f} secondes")
 
 # def thread_opponent(game):
 #     while True:
