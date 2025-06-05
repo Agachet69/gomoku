@@ -7,25 +7,13 @@ import sys
 import time
 
 from thread import init_threads
-
-WHITE = (240, 240, 240)
-BLACK = (20, 20, 20)
-GRAY = (200, 200, 200)
-GRAY_RECT = (218, 218, 218)
-BLUE = (66, 135, 245)
-RED = (176, 23, 23)
-GOBAN = (221, 180, 92)
-
-CELL_SIZE = 50
-GAME_SIZE = CELL_SIZE * BOARD_SIZE
-WINDOW_SIZE = GAME_SIZE * 1.3
-STONE_RADIUS = CELL_SIZE // 2 - 5
-PADDING = (WINDOW_SIZE - GAME_SIZE) / 2
-
+from config import WINDOW_SIZE, BLACK, GAME_SIZE, CELL_SIZE, GOBAN, WHITE, GRAY, RED
+from draw import draw_game
 
 def get_fonts():
     fonts = {}
     fonts["font"] = pygame.font.SysFont(None, 36)
+    fonts["little"] = pygame.font.SysFont(None, 24)
     fonts["font_big"] = pygame.font.SysFont(None, 56)
 
     return fonts
@@ -107,38 +95,7 @@ def menu_screen(screen, font, game: Game, event):
     #             return "friend"
 
 
-def draw_board(board: Board, screen, game: Game):
-    screen.fill(GOBAN)
 
-    for i in range(BOARD_SIZE + 1):
-        pygame.draw.line(
-            screen,
-            BLACK,
-            (PADDING, PADDING + (CELL_SIZE * i)),
-            (PADDING + CELL_SIZE * 19, PADDING + (CELL_SIZE * i)),
-            1,
-        )
-        pygame.draw.line(
-            screen,
-            BLACK,
-            (PADDING + (CELL_SIZE * i), PADDING),
-            (PADDING + (CELL_SIZE * i), PADDING + (CELL_SIZE * 19)),
-            1,
-        )
-
-    for y in range(BOARD_SIZE):
-        for x in range(BOARD_SIZE):
-            val = board.board[y, x]
-            img = None
-            if val == 1:
-                img = game.P1.img_path
-            elif val == 2:
-                img = game.P2.img_path
-
-            if img:
-                px = (WINDOW_SIZE - GAME_SIZE) / 2 + x * CELL_SIZE
-                py = (WINDOW_SIZE - GAME_SIZE) / 2 + y * CELL_SIZE
-                screen.blit(img, (px, py))
 
 
 def draw_finish_modal(screen, game: Game, fonts, event):
@@ -191,10 +148,6 @@ def init_game():
 
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
     pygame.display.set_caption("Gomoku AI")
-    # image = pygame.image.load("./assets/black.png").convert_alpha()
-    # image2 = pygame.image.load("./assets/white.png").convert_alpha()
-    # img1 = pygame.transform.smoothscale(image, (CELL_SIZE, CELL_SIZE))
-    # img2 = pygame.transform.smoothscale(image2, (CELL_SIZE, CELL_SIZE))
 
     while game.get_program_run() is True:
         for event in pygame.event.get():
@@ -208,79 +161,13 @@ def init_game():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)
-
-                draw_board(game.board, screen, game)
-                message_couleur = "White" if game.player_turn == 2 else "Black"
-                color = RED if message_couleur == "Red" else BLACK
-
-                msg_capture = f"{game.P1.name} Capture score"
-                msg_capture2 = f"{game.P2.name} Capture score"
-                text_captures = fonts["font"].render(msg_capture, True, BLACK)
-                text_captures2 = fonts["font"].render(msg_capture2, True, BLACK)
-
-                captures_number_P1 = f"{game.P1.capture_score}"
-                captures_number_P2 = f"{game.P2.capture_score}"
-
-                number_captures_P1 = fonts["font"].render(
-                    captures_number_P1, True, BLACK
-                )
-                number_captures_P2 = fonts["font"].render(
-                    captures_number_P2, True, BLACK
-                )
-
-                texte_partie1 = fonts["font_big"].render(message_couleur, True, color)
-                texte_partie2 = fonts["font_big"].render(" turn.", True, BLACK)
-                width_text = texte_partie2.get_width()
-
-                screen.blit(
-                    texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100)
-                )
-                screen.blit(
-                    texte_partie2,
-                    (
-                        WINDOW_SIZE / 2 - width_text + texte_partie1.get_width(),
-                        WINDOW_SIZE - 100,
-                    ),
-                )
-                screen.blit(
-                    text_captures,
-                    (
-                        WINDOW_SIZE / 8,
-                        WINDOW_SIZE - 100,
-                    ),
-                )
-                screen.blit(
-                    number_captures_P1,
-                    (
-                        WINDOW_SIZE / 8,
-                        WINDOW_SIZE - 70,
-                    ),
-                )
-
-                screen.blit(
-                    text_captures2,
-                    (
-                        WINDOW_SIZE * 0.8,
-                        WINDOW_SIZE - 100,
-                    ),
-                )
-                screen.blit(
-                    number_captures_P2,
-                    (
-                        WINDOW_SIZE * 0.8,
-                        WINDOW_SIZE - 70,
-                    ),
-                )
+                draw_game(screen, fonts, game)
                 pygame.display.flip()
-
             elif (
                 game.game_state == GameState.Finish or game.game_state == GameState.Draw
             ):
                 draw_finish_modal(screen, game, fonts, event)
 
-
         pygame.display.flip()
-        # clock.tick(60)
-        # pygame.display.flip()
 
     pygame.quit()

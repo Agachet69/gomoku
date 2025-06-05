@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     from game import Game
 
-BOARD_SIZE = 19
-
+from config import BOARD_SIZE
 
 class HumanMoveManager:
     def __init__(self, move):
