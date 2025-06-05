@@ -20,97 +20,42 @@ class Board:
             return False
         if self.board[y, x] != 0:
             return False
-        if self.is_double_three(x, y, game):
-            return False
         return True
-
-    def is_double_three(self, x, y, game: Game):
+    
+    def is_double_three(self, x, y, game):
         player_value = game.get_me_value()
-        opponent_value = game.get_opponent_value()
-        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
         board = game.board.board
-        three_number = 0
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        patterns = [
+            [0, player_value, player_value, player_value, 0, -1],  # 01110*
+            [0, player_value, 0, player_value, player_value, 0],  # 010110
+            [0, player_value, player_value, 0, player_value, 0],  # 011010
+        ]
+
+        board[y, x] = player_value
+        free_three_count = 0
+
 
         for dx, dy in directions:
-            can_be_three = True
-            deepth = 1
-            empty = 0
-            # first_empty = 0
-            # second_empty = 0
-            stones = 1
+            line = []
+            for i in range(-5, 6):
+                nx, ny = x + dx * i, y + dy * i
+                val = board[ny, nx] if self.is_on_board(nx, ny) else -1
+                line.append(val)
 
-            pos_y, pos_x = y + dy, x + dx
-            while self.is_on_board(pos_x, pos_y) and empty <= 1 and deepth <= 4:
-                position_value = board[pos_y, pos_x]
-                
-                if position_value == player_value:
-                    stones += 1
-
-
-                if deepth < 3 and position_value == opponent_value:
-                    can_be_three = False
-                    print("False double three")
+            for i in range(len(line) - 5):
+                segment = line[i : i + 6]
+                if any(all(seg == pat or pat == -1 for seg, pat in zip(segment, pattern)) for pattern in patterns):
+                    free_three_count += 1
                     break
 
-                # if position_value == 0:
-                #     first_empty += 1
-                
-                
-                
-                
-                
-                
-                # if stones == 3 and board[pos_y, pos_x] == opponent_value:
-                #     print('three blocked')
-                #     can_be_three = False
-                #     break
+            if free_three_count >= 2:
+                board[y, x] = 0
+                return True
 
-
-                deepth +=1
-                pos_x += dx
-                pos_y += dy
-
-            # if stones == 3 and not self.is_on_board(pos_x, pos_y):
-            #     print("three blocked")
-            #     can_be_three = False
-
-            empty = 0
-            deepth = 0
-            pos_y, pos_x = y - dy, x - dx
-            while (
-                can_be_three is True
-                and self.is_on_board(pos_x, pos_y)
-                and empty <= 1
-                and deepth <= 4
-            ):
-                position_value = board[pos_y, pos_x]
-                if position_value == player_value:
-                    stones += 1
-
-
-                if deepth < 3 and position_value == opponent_value:
-                    can_be_three = False
-                    print("False double three")
-                    break
-
-                # if position_value == 0:
-                #     second_empty += 1
-
-                deepth +=1
-                pos_x -= dx
-                pos_y -= dy
-
-            
-            
-            if can_be_three is True and stones == 3:
-                print(' three')
-                three_number += 1
-        if three_number > 1:
-            print('double three')
-            return True
+        board[y, x] = 0
         return False
     
-
     def is_on_board(self, x, y):
         if x < 0 or y < 0 or x >= BOARD_SIZE or y >= BOARD_SIZE:
             return False
@@ -262,7 +207,9 @@ class Board:
             if self.has_player_won(opponent.value):
                 game.winner = opponent
                 game.game_state = GameState.Finish
-
+            if self.is_double_three(x, y, game):
+                print("Illegal moove double three.")
+                return
             game.has_played()
             self.board[y, x] = player.value
 
