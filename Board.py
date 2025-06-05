@@ -35,14 +35,42 @@ class Board:
             return False
         if self.board[y, x] != 0:
             return False
-        if self.is_double_three(x, y, game):
-            return False
         return True
+    
+    def is_double_three(self, x, y, game):
+        player_value = game.get_me_value()
+        board = game.board.board
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        patterns = [
+            [0, player_value, player_value, player_value, 0, -1],  # 01110*
+            [0, player_value, 0, player_value, player_value, 0],  # 010110
+            [0, player_value, player_value, 0, player_value, 0],  # 011010
+        ]
 
-    def is_double_three(self, x, y, game: Game):
-        print(game.player_turn)
+        board[y, x] = player_value
+        free_three_count = 0
 
 
+        for dx, dy in directions:
+            line = []
+            for i in range(-5, 6):
+                nx, ny = x + dx * i, y + dy * i
+                val = board[ny, nx] if self.is_on_board(nx, ny) else -1
+                line.append(val)
+
+            for i in range(len(line) - 5):
+                segment = line[i : i + 6]
+                if any(all(seg == pat or pat == -1 for seg, pat in zip(segment, pattern)) for pattern in patterns):
+                    free_three_count += 1
+                    break
+
+            if free_three_count >= 2:
+                board[y, x] = 0
+                return True
+
+        board[y, x] = 0
+        return False
+    
     def is_on_board(self, x, y):
         if x < 0 or y < 0 or x >= BOARD_SIZE or y >= BOARD_SIZE:
             return False
@@ -194,7 +222,9 @@ class Board:
             if self.has_player_won(opponent.value):
                 game.winner = opponent
                 game.game_state = GameState.Finish
-
+            if self.is_double_three(x, y, game):
+                print("Illegal moove double three.")
+                return
             game.has_played()
             self.board[y, x] = player.value
 

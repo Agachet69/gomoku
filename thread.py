@@ -234,7 +234,7 @@ def thread_opponent(game: Game):
 
 
         elapsed = time.time() - start_time  # Fin du chrono
-        print(f"Temps total de l'itération : {elapsed:.3f} secondes")
+        # print(f"Temps total de l'itération : {elapsed:.3f} secondes")
 
 
 def thread_AI(game: Game, move_manager: HumanMoveManager):
