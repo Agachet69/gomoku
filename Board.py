@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from game_state_enum import GameState
 from player import Player
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from game import Game
@@ -10,10 +10,25 @@ if TYPE_CHECKING:
 BOARD_SIZE = 19
 
 
+class HumanMoveManager:
+    def __init__(self, move):
+        self.move = move
+        self.running = True
+        self.move_to_do = None
+    
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"move={self.move!r}, "
+            f"running={self.running}, "
+            f"move_to_do={self.move_to_do!r})"
+        )
+
+
 class Board:
     def __init__(self):
         self.board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.uint8)
-        self.human_best_moves = []
+        self.human_best_moves : List[HumanMoveManager] = []
 
     def is_legal_moove(self, x, y, game: Game):
         if x < 0 or y < 0:
@@ -189,6 +204,7 @@ class Board:
             if np.count_nonzero(self.board == 0) == 0:
                     game.winner = opponent
                     game.game_state = GameState.Draw
+            player.last_moves.insert(0, (x, y))
         else:
             print("Illegal moove.")
 

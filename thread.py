@@ -1,6 +1,7 @@
+import random
 import sys
 from typing import Literal
-from Board import Board
+from Board import Board, HumanMoveManager
 from game import Game
 from game_state_enum import GameState
 import threading
@@ -8,6 +9,11 @@ import time
 import numpy as np
 
 from player import Player
+
+from concurrent.futures import ThreadPoolExecutor
+
+executor = ThreadPoolExecutor(max_workers=4)  # ajuste ce nombre selon ta machine
+
 
 
 POTENTIAL_MOVES_DIRECTIONS = [
@@ -22,6 +28,10 @@ POTENTIAL_MOVES_DIRECTIONS = [
 def init_threads(game):
     thread1  = threading.Thread(target=thread_opponent, args=(game,))
     thread1.start()
+    move_maker_thr  = threading.Thread(target=move_maker_thread, args=(game,))
+    move_maker_thr.start()
+
+    
     # thread2  = threading.Thread(target=thread_AI, args=(game,))
     # thread2.start()
     # return thread
@@ -55,7 +65,7 @@ def evaluate(game: Game, last_move, player):
     val = 0
     rows, cols = game.board.board.shape
     for dx, dy in directions:
-        ni, nj = last_move[1] + dx, last_move[0] + dy
+        ni, nj = last_move[0] + dx, last_move[1] + dy
         if 0 <= ni < rows and 0 <= nj < cols:
             if game.board.board[ni][nj] == player.value:
                 val += 10
@@ -71,7 +81,7 @@ def evaluate(game: Game, last_move, player):
 
 def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, last_move):
 
-    if not depth or game.board.is_winner_moove(player, last_move[1], last_move[0]):
+    if not depth or game.board.is_winner_moove(player, last_move[1], last_move[0], game):
         return evaluate(game, last_move, game.P1 if game.P1.name != player.name else game.P2)
     
     moves = potential_moves(game.board, player)
@@ -106,9 +116,79 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
         return minEval
 
 
+def move_maker_thread(game: Game):
+    last_turn = game.P1.name
+    while game.program_run and game.game_state != GameState.Finish:
+        if game.player_turn == game.P1.value:
+            last_turn = game.P1.name
+            time.sleep(0.1)
+            continue
+
+        if last_turn == game.P1.name:
+            last_turn = game.P2.name
+            last_move = game.P1.last_moves[0]
+            rows, cols = game.board.board.shape
+
+            print("Human had moved")
+
+            if not np.any(game.board.board == 2):
+                direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
+
+                while not (0 <= last_move[1] + direction[1] < rows and 0 <= last_move[0] + direction[0] < cols):
+                    direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
+                print(last_move)
+                print(direction)
+
+                game.board.play_moove(game, last_move[0] + direction[0], last_move[1] + direction[1])
+
+                print("AI Played randomly")
+            
+
+            elif move_calculated := next((move for move in game.board.human_best_moves if move.move == last_move), None):
+                
+                while move_calculated.running:
+                    print(move_calculated.running)
+                    pass
+
+                game.board.play_moove(game, move_calculated.move_to_do[0], move_calculated.move_to_do[1])
+                print("AI Played move already calculated")
+            else:
+                print("oui")
+                move_manager = HumanMoveManager(last_move)
+
+                executor.submit(thread_AI, game, move_manager)
+
+                while move_manager.running:
+                    pass
+
+                game.board.play_moove(game, move_manager.move_to_do[0], move_manager.move_to_do[1])
+
+                print("AI Played move calculated on the fly")
+
+
+
+
+                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 DEPTH_MAX = 1
-NUMBER_BEST_MOVES = 10
+NUMBER_BEST_MOVES = 8
 
 
 
@@ -117,48 +197,8 @@ def thread_opponent(game: Game):
         start_time = time.time()
         move_score = []
 
+
         if not np.any(game.board.board == 1) or game.player_turn == 2 or len(game.board.human_best_moves) == NUMBER_BEST_MOVES:
-            continue
-
-
-        moves = potential_moves(game.board, game.P1)
-        best_score = 0
-
-        for move in moves:
-            new_state = game.copy()
-            new_state.board.board[move[1]][move[0]] = game.P1.value
-            # print(game.P1.name)
-            score = minmax(new_state, DEPTH_MAX-1, -10000000000, 10000000000, False, game.P2, move)
-            # game.board.play_moove(game, move[0], move[1])
-
-
-            move_score.append(score)
-            # if best_score < score:
-            #     best_score = score
-            #     best_move = move
-
-            
-        game.board.human_best_moves = [move for move, _ in sorted(list(zip(moves, move_score)), key=lambda x: x[1], reverse=True)[:NUMBER_BEST_MOVES]]
-        print(game.board.human_best_moves)
-        # print(f"Coups possibles : {coups}")
-        # if best_move:
-        #     print(best_move)
-            # game.board.play_moove(game, best_move[0], best_move[1])
-
-        # if best_move:
-
-        # minmax(game.board.board)
-
-        elapsed = time.time() - start_time  # Fin du chrono
-        print(f"Temps total de l'itération : {elapsed:.3f} secondes")
-
-
-def thread_AI(game: Game):
-    while game.program_run and game.game_state != GameState.Finish:
-        start_time = time.time()
-        move_score = []
-
-        if not np.any(game.board.board == 2) or game.player_turn == 1 or len(game.board.human_best_moves) == NUMBER_BEST_MOVES:
             time.sleep(0.1)
             continue
 
@@ -170,7 +210,7 @@ def thread_AI(game: Game):
             new_state = game.copy()
             new_state.board.board[move[1]][move[0]] = game.P1.value
             # print(game.P1.name)
-            score = minmax(new_state, DEPTH_MAX-1, -10000000000, 10000000000, False, game.P2, move)
+            score = minmax(new_state, DEPTH_MAX-1, -10000000000, 10000000000, True, game.P2, move)
             # game.board.play_moove(game, move[0], move[1])
 
 
@@ -178,21 +218,59 @@ def thread_AI(game: Game):
             # if best_score < score:
             #     best_score = score
             #     best_move = move
-
+        # print(move_score)
             
-        game.board.human_best_moves = [move for move, _ in sorted(list(zip(moves, move_score)), key=lambda x: x[1], reverse=True)[:NUMBER_BEST_MOVES]]
+        game.board.human_best_moves = [HumanMoveManager(move) for move, _ in sorted(list(zip(moves, move_score)), key=lambda x: x[1], reverse=True)[:NUMBER_BEST_MOVES]]
         print(game.board.human_best_moves)
-        # print(f"Coups possibles : {coups}")
-        # if best_move:
-        #     print(best_move)
-        game.board.play_moove(game, game.board.human_best_moves[0][1], game.board.human_best_moves[0][0])
 
-        # if best_move:
 
-        # minmax(game.board.board)
+        for move in game.board.human_best_moves:
+            # game.board.board[move.move[0]][move.move[1]] = 1
+            # time.sleep(.1)
+
+
+            executor.submit(thread_AI, game, move)
+
+
 
         elapsed = time.time() - start_time  # Fin du chrono
         print(f"Temps total de l'itération : {elapsed:.3f} secondes")
+
+
+def thread_AI(game: Game, move_manager: HumanMoveManager):
+
+    start_time = time.time()
+    state = game.copy()
+    state.board.board[move_manager.move[1]][move_manager.move[0]] = game.P2.value
+
+
+    best_score = 0
+    best_move = None
+    moves = potential_moves(game.board, game.P2)
+
+
+
+
+    for move in moves:
+        # if game.player_turn == 2:
+        #     return
+        new_state = state.copy()
+        new_state.board.board[move[1]][move[0]] = game.P2.value
+        # print(game.P1.name)
+        score = minmax(new_state, DEPTH_MAX-1, -10000000000, 10000000000, True, game.P2, move)
+        # game.board.play_moove(game, move[0], move[1])
+
+
+        if best_score < score:
+            best_score = score
+            best_move = move
+
+    
+    move_manager.running = False
+    move_manager.move_to_do = best_move
+
+    elapsed = time.time() - start_time  # Fin du chrono
+    print(f"Thread AI finished in {elapsed:.3f} seconds for the move {move_manager.move}")
 
 # def thread_opponent(game):
 #     while True:
