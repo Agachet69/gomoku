@@ -15,7 +15,7 @@ from config import (
 )
 
 
-def draw_board(screen, game: Game):
+def draw_board(screen, fonts, game: Game):
     board = game.board
     screen.fill(GOBAN)
 
@@ -27,6 +27,7 @@ def draw_board(screen, game: Game):
             (PADDING + CELL_SIZE * 19, PADDING + (CELL_SIZE * i)),
             1,
         )
+        nb = fonts["font"].render(f"{i}", True, BLACK)
         pygame.draw.line(
             screen,
             BLACK,
@@ -34,6 +35,21 @@ def draw_board(screen, game: Game):
             (PADDING + (CELL_SIZE * i), PADDING + (CELL_SIZE * 19)),
             1,
         )
+        if i < 19:
+            screen.blit(
+                nb,
+                (
+                    (PADDING + 15) + 50 * i,
+                    160,
+                ),
+            )
+            screen.blit(
+                nb,
+                (
+                    160,
+                    (PADDING + 15) + 50 * i,
+                ),
+            )
 
     for y in range(BOARD_SIZE):
         for x in range(BOARD_SIZE):
@@ -68,47 +84,27 @@ def draw_turn(screen, fonts, game):
 
 
 def draw_capture_score(screen, fonts, game):
-    msg_capture = "Captures:"
-    msg_capture2 = f"{game.P2.name} score"
-    text_captures = fonts["little"].render(msg_capture, True, BLACK)
-    text_captures2 = fonts["font"].render(msg_capture2, True, BLACK)
+    msg_capture_P1 = f"Captures: {game.P1.capture_score}"
+    msg_capture_P2 = f"Captures: {game.P2.capture_score}"
 
-    # captures_number_P1 = f"{game.P1.capture_score}"
-    captures_number_P2 = f"{game.P2.capture_score}"
+    number_captures_P1 = fonts["little"].render(msg_capture_P1, True, BLACK)
+    number_captures_P2 = fonts["little"].render(msg_capture_P2, True, BLACK)
 
-    # number_captures_P1 = fonts["font"].render(captures_number_P1, True, BLACK)
-    number_captures_P2 = fonts["font"].render(captures_number_P2, True, BLACK)
-
-    screen.blit(
-        text_captures,
-        (
-            1150,
-            220,
-        ),
-    )
-    screen.blit(
-        text_captures,
-        (
-            10,
-            220,
-        ),
-    )
-
-    screen.blit(
-        text_captures2,
-        (
-            WINDOW_SIZE * 0.8,
-            WINDOW_SIZE - 100,
-        ),
-    )
     screen.blit(
         number_captures_P2,
         (
-            WINDOW_SIZE * 0.8,
-            WINDOW_SIZE - 70,
+            20,
+            220,
         ),
     )
-
+    screen.blit(
+        number_captures_P1,
+        (
+            1160,
+            220,
+        ),
+    )
+  
 
 def draw_title(screen, fonts):
     title = "Gomoku"
@@ -144,7 +140,7 @@ def draw_game(
     fonts,
     game: Game,
 ):
-    draw_board(screen, game)
+    draw_board(screen, fonts, game)
     draw_title(screen, fonts)
     draw_turn(screen, fonts, game)
     draw_team_side(screen, fonts, game)

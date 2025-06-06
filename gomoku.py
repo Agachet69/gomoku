@@ -7,6 +7,5 @@ EMPTY, PLAYER, PLAYER = 0, 1, 2
 
 def main():
     init_game()
-    # board.is_legal_moove()
 
 main()

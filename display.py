@@ -95,9 +95,6 @@ def menu_screen(screen, font, game: Game, event):
     #             return "friend"
 
 
-
-
-
 def draw_finish_modal(screen, game: Game, fonts, event):
     screen_rect = screen.get_rect()
     box_width, box_height = 500, 300
@@ -139,6 +136,7 @@ def draw_finish_modal(screen, game: Game, fonts, event):
             game.replay()
         elif menu_rect.collidepoint(event.pos):
             game.menu()
+
 
 def init_game():
     pygame.init()
