@@ -75,7 +75,7 @@ class Board:
             return False
         return True
 
-    def is_capture_moove(self, game: Game, my_player, my_opponent, x, y):
+    def is_capture_moove(self, game: Game, player, my_opponent, x, y):
         directions = [
             (1, 0),
             (0, 1),
@@ -87,7 +87,7 @@ class Board:
             (-1, 1),
         ]
         new_board = game.board.board.copy()
-        player = game.P1 if my_player == game.P1.value else game.P2
+        is_capture = False
 
         for dy, dx in directions:
             stones = 0
@@ -112,10 +112,11 @@ class Board:
                 player.capture_score += 2
                 new_board[pos_y, pos_x] = 0
                 new_board[pos_y - dy, pos_x - dx] = 0
+                is_capture = True
                 print(f"{player.value} score : {player.capture_score}")
         self.update_board(new_board)
 
-        return player
+        return is_capture
 
     def can_be_captured(self, x, y, player: Player, opponent_value):
         directions = [
@@ -213,27 +214,27 @@ class Board:
 
     def play_moove(self, game: Game, x, y):
         if self.is_legal_moove(x, y, game):
-            my_player_value = game.get_me_value()
-            if my_player_value == 2:
+            my_player = game.get_player(game.get_me_value())
+            if my_player.value == 2:
                 self.human_best_moves = []
-            opponent = game.get_opponent(my_player_value)
-            player = self.is_capture_moove(game, my_player_value, opponent.value, x, y)
+            opponent = game.get_opponent(my_player.value)
+            captured = self.is_capture_moove(game, my_player, opponent.value, x, y)
             if self.has_player_won(opponent.value):
                 game.winner = opponent
                 game.game_state = GameState.Finish
-            if self.is_double_three(x, y, game):
+            if captured is False and self.is_double_three(x, y, game):
                 print("Illegal moove double three.")
                 return
             game.has_played()
-            self.board[y, x] = player.value
+            self.board[y, x] = my_player.value
 
-            if self.is_winner_moove(player, x, y, game):
-                game.winner = player
+            if self.is_winner_moove(my_player, x, y, game):
+                game.winner = my_player
                 game.game_state = GameState.Finish
             if np.count_nonzero(self.board == 0) == 0:
                     game.winner = opponent
                     game.game_state = GameState.Draw
-            player.last_moves.insert(0, (x, y))
+            my_player.last_moves.insert(0, (x, y))
         else:
             print("Illegal moove.")
 

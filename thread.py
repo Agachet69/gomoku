@@ -80,9 +80,11 @@ def evaluate(game: Game, last_move, player):
 
 
 def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, last_move):
-
-    if not depth or game.board.is_winner_moove(player, last_move[1], last_move[0], game):
-        return evaluate(game, last_move, game.P1 if game.P1.name != player.name else game.P2)
+    opponent = game.get_opponent(player.value)
+    if not depth or game.board.is_winner_moove(
+        opponent, last_move[1], last_move[0], game
+    ):
+        return evaluate(game, last_move, opponent)
     
     moves = potential_moves(game.board, player)
 
@@ -92,7 +94,7 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
         for move in moves:
             new_state = game.copy()
             new_state.board.board[move[1]][move[0]] = player.value
-            eval_value = minmax(new_state, depth-1, alpha, beta, not maximizingPlayer, game.P1 if game.P1.name != player.name else game.P2, last_move=move)
+            eval_value = minmax(new_state, depth-1, alpha, beta, not maximizingPlayer, opponent, last_move=move)
 
             maxEval = max(maxEval, eval_value)
             alpha = max(alpha, eval_value)
@@ -106,10 +108,10 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
         for move in moves:
             new_state = game.copy()
             new_state.board.board[move[1]][move[0]] = player.value
-            eval_value = minmax(new_state, depth-1, alpha, beta, not maximizingPlayer, game.P1 if game.P1.name != player.name else game.P2, last_move=move)
+            eval_value = minmax(new_state, depth-1, alpha, beta, not maximizingPlayer, opponent, last_move=move)
 
             minEval = min(minEval, eval_value)
-            alpha = min(beta, eval_value)
+            beta = min(beta, eval_value)
 
             if beta <= alpha:
                 break

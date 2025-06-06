@@ -12,6 +12,7 @@ class Game:
         self.P1 = None
         self.P2 = None
         self.board = Board()
+        # self.historic = []
 
     def set_players(self, P1: Player, P2: Player):
         self.board = Board()
