@@ -29,7 +29,7 @@ class Board:
         self.board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.uint8)
         self.human_best_moves : List[HumanMoveManager] = []
 
-    def is_legal_moove(self, x, y, game: Game):
+    def is_legal_moove(self, x, y):
         if x < 0 or y < 0:
             return False
         if self.board[y, x] != 0:
@@ -213,7 +213,7 @@ class Board:
         return False
 
     def play_moove(self, game: Game, x, y):
-        if self.is_legal_moove(x, y, game):
+        if self.is_legal_moove(x, y):
             my_player = game.get_player(game.get_me_value())
             if my_player.value == 2:
                 self.human_best_moves = []
