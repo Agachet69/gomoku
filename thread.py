@@ -256,7 +256,7 @@ def thread_AI(game: Game, move_manager: HumanMoveManager):
         new_state = state.copy()
         new_state.board.board[move[1]][move[0]] = game.P2.value
         # print(game.P1.name)
-        score = minmax(new_state, DEPTH_MAX-1, -10000000000, 10000000000, True, game.P2, move)
+        score = minmax(new_state, DEPTH_MAX-1, -10000000000, 10000000000, True, game.P1, move)
         # game.board.play_moove(game, move[0], move[1])
 
         if best_score < score:
