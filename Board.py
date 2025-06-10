@@ -75,7 +75,7 @@ class Board:
             return False
         return True
 
-    def is_capture_moove(self, game: Game, player, my_opponent, x, y):
+    def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
         directions = [
             (1, 0),
             (0, 1),
@@ -88,6 +88,7 @@ class Board:
         ]
         new_board = game.board.board.copy()
         is_capture = False
+        score = 0
 
         for dy, dx in directions:
             stones = 0
@@ -109,14 +110,15 @@ class Board:
                 pos_x -= dx
                 if not self.is_on_board(pos_x, pos_y):
                     continue
-                player.capture_score += 2
-                new_board[pos_y, pos_x] = 0
-                new_board[pos_y - dy, pos_x - dx] = 0
+                score += 2
                 is_capture = True
-                print(f"{player.value} score : {player.capture_score}")
-        self.update_board(new_board)
+                # player.capture_score += 2
+                # new_board[pos_y, pos_x] = 0
+                # new_board[pos_y - dy, pos_x - dx] = 0
+                # print(f"{player.value} score : {player.capture_score}")
+        # self.update_board(new_board)
 
-        return is_capture
+        return is_capture, new_board, score
 
     def can_be_captured(self, x, y, player: Player, opponent_value):
         directions = [
@@ -218,7 +220,11 @@ class Board:
             if my_player.value == 2:
                 self.human_best_moves = []
             opponent = game.get_opponent(my_player.value)
-            captured = self.is_capture_moove(game, my_player, opponent.value, x, y)
+            captured, new_board, score = self.check_is_capture_moove(
+                game, my_player, opponent.value, x, y
+            )
+            my_player.capture_score += score
+            self.update_board(new_board)
             if self.has_player_won(opponent.value):
                 game.winner = opponent
                 game.game_state = GameState.Finish
