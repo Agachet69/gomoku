@@ -70,6 +70,40 @@ class Board:
         board[y, x] = 0
         return False
     
+    def check_is_double_three(self, x, y, game):
+        player_value = game.get_me_value()
+        board = game.board.board.copy()
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        patterns = [
+            [0, player_value, player_value, player_value, 0, -1],  # 01110*
+            [0, player_value, 0, player_value, player_value, 0],  # 010110
+            [0, player_value, player_value, 0, player_value, 0],  # 011010
+        ]
+
+        board[y, x] = player_value
+        free_three_count = 0
+
+
+        for dx, dy in directions:
+            line = []
+            for i in range(-5, 6):
+                nx, ny = x + dx * i, y + dy * i
+                val = board[ny, nx] if self.is_on_board(nx, ny) else -1
+                line.append(val)
+
+            for i in range(len(line) - 5):
+                segment = line[i : i + 6]
+                if any(all(seg == pat or pat == -1 for seg, pat in zip(segment, pattern)) for pattern in patterns):
+                    free_three_count += 1
+                    break
+
+            if free_three_count >= 2:
+                board[y, x] = 0
+                return True
+
+        board[y, x] = 0
+        return False
+    
     def is_on_board(self, x, y):
         if x < 0 or y < 0 or x >= BOARD_SIZE or y >= BOARD_SIZE:
             return False
@@ -115,6 +149,48 @@ class Board:
                 is_capture = True
                 print(f"{player.value} score : {player.capture_score}")
         self.update_board(new_board)
+
+        return is_capture
+    
+    def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
+        directions = [
+            (1, 0),
+            (0, 1),
+            (1, 1),
+            (1, -1),
+            (-1, 0),
+            (0, -1),
+            (-1, -1),
+            (-1, 1),
+        ]
+        new_board = game.board.board.copy()
+        is_capture = False
+
+        for dy, dx in directions:
+            stones = 0
+            pos_y, pos_x = y + dy, x + dx
+            while (
+                self.is_on_board(pos_x, pos_y)
+                and self.board[pos_y, pos_x] == my_opponent
+            ):
+                stones += 1
+                pos_y += dy
+                pos_x += dx
+
+            if (
+                self.is_on_board(pos_x, pos_y)
+                and stones == 2
+                and self.board[pos_y, pos_x] == player.value
+            ):
+                pos_y -= dy
+                pos_x -= dx
+                if not self.is_on_board(pos_x, pos_y):
+                    continue
+                player.capture_score += 2
+                new_board[pos_y, pos_x] = 0
+                new_board[pos_y - dy, pos_x - dx] = 0
+                is_capture = True
+                print(f"{player.value} score : {player.capture_score}")
 
         return is_capture
 
