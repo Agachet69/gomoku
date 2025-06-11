@@ -9,7 +9,7 @@ import time
 import numpy as np
 
 from player import Player
-from heuristic import evaluate
+# from heuristic import evaluate
 from concurrent.futures import ThreadPoolExecutor
 
 executor = ThreadPoolExecutor(max_workers=4)  # ajuste ce nombre selon ta machine
@@ -110,35 +110,71 @@ NORMAL_GAIN = 100
 SMALL_GAIN = 1
 
 
-# def evaluate(game: Game, last_move, player):
-#     val = 0
-#     board = game.board.board
-#     player_value = player.value
-#     rows, cols = board.shape
-#     x, y = last_move
+import numpy as np
 
-#     directions = [
-#         (-1, -1), (-1, 0), (-1, 1),
-#         ( 0, -1),          ( 0, 1),
-#         ( 1, -1), ( 1, 0), ( 1, 1),
-#     ]
+def evaluate(game: Game, last_move, player):
+    val = 0
+    board = game.board.board  # np.ndarray 2D
+    player_value = player.value
+    opponent_value = 3 - player_value  # Si 1 → 2 ; si 2 → 1
+    rows, cols = board.shape
+    x, y = last_move  # (colonne, ligne)
 
-#     for dx, dy in directions:
-#         ni, nj = y + dy, x + dx
-#         if 0 <= ni < rows and 0 <= nj < cols:
-#             if board[ni, nj] == player_value:
-#                 val += SMALL_GAIN
+    directions = [
+        (1, 0),   # horizontal →
+        (0, 1),   # vertical ↓
+        (1, 1),   # diagonale ↘
+        (1, -1),  # diagonale ↗
+    ]
 
-#     return val
+    for dx, dy in directions:
+        count = 1  # pion placé
+
+        nx, ny = x + dx, y + dy
+        while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
+            count += 1
+            nx += dx
+            ny += dy
+
+        nx, ny = x - dx, y - dy
+        while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
+            count += 1
+            nx -= dx
+            ny -= dy
+
+        if count >= 5:
+            val += BIG_GAIN
+        elif count == 4:
+            val += 3 * NORMAL_GAIN
+        elif count == 3:
+            val += 2 * NORMAL_GAIN
+        elif count == 2:
+            val += NORMAL_GAIN
+
+        for sign in [1, -1]:
+            cx, cy = x + sign * dx, y + sign * dy
+            cx2, cy2 = x + sign * 2 * dx, y + sign * 2 * dy
+            cx3, cy3 = x + sign * 3 * dx, y + sign * 3 * dy
+
+            if (
+                0 <= cy3 < rows and 0 <= cx3 < cols
+                and board[cy, cx] == opponent_value
+                and board[cy2, cx2] == opponent_value
+                and board[cy3, cx3] == player_value
+            ):
+                val += NORMAL_GAIN * 2 + NORMAL_GAIN * player.capture_score if player.capture_score != 9 else BIG_GAIN
+
+    return val
+
 
 
 def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, last_move):
     opponent = game.get_opponent(player.value)
     if not depth or game.board.is_winner_moove(
-        opponent, last_move[0], last_move[1], game
+        player, last_move[0], last_move[1], game
     ):
-        return evaluate(game, player)
-        # return evaluate(game, last_move, opponent)
+        # return evaluate(game, player)
+        return evaluate(game, last_move, player)
 
     moves = potential_moves(game, player)
 
@@ -189,7 +225,7 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
                 depth - 1,
                 alpha,
                 beta,
-                maximizingPlayer,
+                not maximizingPlayer,
                 opponent,
                 last_move=move,
             )
@@ -256,13 +292,9 @@ def move_maker_thread(game: Game):
 
                 executor.submit(thread_AI, game, move_manager)
 
-                print("check1", move_manager.running)
                 while move_manager.running:
                     # print("oui")
                     time.sleep(0.01)
-                print(move_manager.running)
-                print(move_manager.move_to_do)
-                print("check")
                 game.board.play_moove(
                     game, move_manager.move_to_do[0], move_manager.move_to_do[1]
                 )
@@ -270,7 +302,7 @@ def move_maker_thread(game: Game):
                 print("AI Played move calculated on the fly")
 
 
-DEPTH_MAX = 2
+DEPTH_MAX = 1
 NUMBER_BEST_MOVES = 4
 
 
@@ -291,7 +323,6 @@ def thread_opponent(game: Game):
         best_score = 0
 
         for move in moves:
-            print('vvvvv')
             new_state = game.copy()
             new_state.board.board[move[1]][move[0]] = game.P1.value
             score = minmax(
@@ -323,37 +354,39 @@ def thread_opponent(game: Game):
 
 
 def thread_AI(game: Game, move_manager: HumanMoveManager):
+
     start_time = time.time()
     state = game.copy()
-    state.board.board[move_manager.move[1]][move_manager.move[0]] = game.P1.value
+    state.board.board[move_manager.move[1], move_manager.move[0]] = game.P1.value
 
-    best_score = float("-inf")
-    best_move = None
-    moves = potential_moves(game, game.P2)
+    best_scores = []
+    moves = potential_moves(state, game.P2)
+
+    max_score = float("-inf")
 
     for move in moves:
         # if game.player_turn == 2:
         #     return
         new_state = state.copy()
-        new_state.board.board[move[1]][move[0]] = game.P2.value
+        new_state.board.board[move[1], move[0]] = game.P2.value
         # print(game.P1.name)
         score = minmax(
             new_state, DEPTH_MAX - 1, -10000000000, 10000000000, True, game.P1, move
         )
+        best_scores.append({"score": score, "move": move})
         # game.board.play_moove(game, move[0], move[1])
 
-        if best_score < score:
-            print(best_score)
-            print(best_move)
-            best_score = score
-            best_move = move
+        if max_score < score:
+            max_score = score
 
+    best_moves = [entry["move"] for entry in best_scores if entry["score"] == max_score]
+
+    move_manager.move_to_do = random.choice(best_moves)
     move_manager.running = False
-    move_manager.move_to_do = best_move
 
     elapsed = time.time() - start_time  # Fin du chrono
     print(
-        f"[{elapsed:.3f}s] Thread AI chose move {best_move} (score: {best_score:03}) in response to human move {move_manager.move}"
+        f"[{elapsed:.3f}s] Thread AI chose move {move_manager.move_to_do} (score: {max_score:03}) in response to human move {move_manager.move}"
     )
 
 
