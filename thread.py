@@ -37,23 +37,29 @@ def init_threads(game):
     # return thread
 
 
+import numpy as np
 
 def potential_moves(game: Game, player: Player):
-
+    board = game.board.board
+    rows, cols = board.shape
+    player_value = player.value
+    opponent = game.get_opponent(player_value)
     moves = set()
-    rows, cols = game.board.board.shape
 
-    for i in range(rows):
-        for j in range(cols):
-            if game.board.board[i, j] == player.value:
-                for dx, dy in POTENTIAL_MOVES_DIRECTIONS:
-                    ni, nj = i + dy, j + dx
-                    if 0 <= ni < rows and 0 <= nj < cols and game.board.board[ni, nj] == 0:
-                        if game.board.is_legal_moove(nj, ni):
-                            if not (game.board.is_double_three(nj, ni, game) and not game.board.is_capture_moove(game, player, game.get_opponent(player.value), nj, ni)):
-                                moves.add((nj, ni))
-    
+    player_positions = np.argwhere(board == player_value)
+
+    for i, j in player_positions:
+        for dx, dy in POTENTIAL_MOVES_DIRECTIONS:
+            ni, nj = i + dy, j + dx
+            if 0 <= ni < rows and 0 <= nj < cols and board[ni, nj] == 0:
+                if game.board.is_legal_moove(nj, ni):
+                    is_double_three = game.board.is_double_three(nj, ni, game)
+                    is_capture = game.board.check_is_capture_moove(game, player, opponent, nj, ni)
+                    if not (is_double_three and not is_capture):
+                        moves.add((nj, ni))
+
     return moves
+
 
 
 
@@ -66,27 +72,24 @@ SMALL_GAIN = 1
 
 def evaluate(game: Game, last_move, player):
     val = 0
+    board = game.board.board
+    player_value = player.value
+    rows, cols = board.shape
+    x, y = last_move
+
     directions = [
         (-1, -1), (-1, 0), (-1, 1),
         ( 0, -1),          ( 0, 1),
         ( 1, -1), ( 1, 0), ( 1, 1),
     ]
 
-   
-
-    
-
-    rows, cols = game.board.board.shape
     for dx, dy in directions:
-        ni, nj = last_move[0] + dx, last_move[1] + dy
+        ni, nj = y + dy, x + dx
         if 0 <= ni < rows and 0 <= nj < cols:
-            if game.board.board[nj][ni] == player.value:
+            if board[ni, nj] == player_value:
                 val += SMALL_GAIN
 
-
     return val
-
-    
 
 
 
@@ -106,7 +109,12 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
 
         for move in moves:
             new_state = game.copy()
+
+            new_state.board.check_is_capture_moove(new_state, player, new_state.get_opponent(player.value), move[0], move[1])
+
             new_state.board.board[move[1]][move[0]] = player.value
+
+
             eval_value = minmax(new_state, depth-1, alpha, beta, not maximizingPlayer, opponent, last_move=move)
 
             maxEval = max(maxEval, eval_value)
@@ -159,18 +167,25 @@ def move_maker_thread(game: Game):
 
             elif move_calculated := next((move for move in game.board.human_best_moves if move.move == last_move), None):
                 while move_calculated.running:
+                    time.sleep(0.01)
                     pass
 
                 game.board.play_moove(game, move_calculated.move_to_do[0], move_calculated.move_to_do[1])
                 print("AI Played move already calculated")
             else:
+                print("Start calculated next move.")
                 move_manager = HumanMoveManager(last_move)
 
                 executor.submit(thread_AI, game, move_manager)
 
-                while move_manager.running:
-                    pass
 
+                print("check1", move_manager.running)
+                while move_manager.running:
+                    print("oui")
+                    time.sleep(0.01)
+                print(move_manager.running)
+                print(move_manager.move_to_do)
+                print("check")
                 game.board.play_moove(game, move_manager.move_to_do[0], move_manager.move_to_do[1])
 
                 print("AI Played move calculated on the fly")
@@ -188,7 +203,7 @@ def move_maker_thread(game: Game):
 
 
 DEPTH_MAX = 1
-NUMBER_BEST_MOVES = 8
+NUMBER_BEST_MOVES = 4
 
 
 
@@ -240,7 +255,7 @@ def thread_AI(game: Game, move_manager: HumanMoveManager):
 
     start_time = time.time()
     state = game.copy()
-    state.board.board[move_manager.move[1]][move_manager.move[0]] = game.P2.value
+    state.board.board[move_manager.move[1]][move_manager.move[0]] = game.P1.value
 
 
     best_score = float('-inf')
@@ -273,4 +288,6 @@ def thread_AI(game: Game, move_manager: HumanMoveManager):
 # def thread_opponent(game):
 #     while True:
 #         print('hello')
+
+
 

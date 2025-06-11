@@ -38,7 +38,7 @@ class Board:
     
     def is_double_three(self, x, y, game):
         player_value = game.get_me_value()
-        board = game.board.board
+        board = game.board.board.copy()
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
         patterns = [
             [0, player_value, player_value, player_value, 0, -1],  # 01110*
@@ -113,8 +113,8 @@ class Board:
                 score += 2
                 is_capture = True
                 # player.capture_score += 2
-                # new_board[pos_y, pos_x] = 0
-                # new_board[pos_y - dy, pos_x - dx] = 0
+                new_board[pos_y, pos_x] = 0
+                new_board[pos_y - dy, pos_x - dx] = 0
                 # print(f"{player.value} score : {player.capture_score}")
         # self.update_board(new_board)
 
