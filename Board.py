@@ -9,12 +9,13 @@ if TYPE_CHECKING:
 
 from config import BOARD_SIZE
 
+
 class HumanMoveManager:
     def __init__(self, move):
         self.move = move
         self.running = True
         self.move_to_do = None
-    
+
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
@@ -27,7 +28,12 @@ class HumanMoveManager:
 class Board:
     def __init__(self):
         self.board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.uint8)
-        self.human_best_moves : List[HumanMoveManager] = []
+        self.human_best_moves: List[HumanMoveManager] = []
+
+    def is_on_board(x, y):
+        if not (0 <= x < BOARD_SIZE) or not (0 <= y < BOARD_SIZE):
+            return False
+        return True
 
     def is_legal_moove(self, x, y):
         if x < 0 or y < 0:
@@ -35,8 +41,8 @@ class Board:
         if self.board[y, x] != 0:
             return False
         return True
-    
-    def is_double_three(self, x, y, game):
+
+    def is_double_three(self, x, y, game: Game):
         player_value = game.get_me_value()
         board = game.board.board.copy()
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
@@ -49,7 +55,6 @@ class Board:
         board[y, x] = player_value
         free_three_count = 0
 
-
         for dx, dy in directions:
             line = []
             for i in range(-5, 6):
@@ -59,7 +64,10 @@ class Board:
 
             for i in range(len(line) - 5):
                 segment = line[i : i + 6]
-                if any(all(seg == pat or pat == -1 for seg, pat in zip(segment, pattern)) for pattern in patterns):
+                if any(
+                    all(seg == pat or pat == -1 for seg, pat in zip(segment, pattern))
+                    for pattern in patterns
+                ):
                     free_three_count += 1
                     break
 
@@ -69,7 +77,7 @@ class Board:
 
         board[y, x] = 0
         return False
-    
+
     def is_on_board(self, x, y):
         if x < 0 or y < 0 or x >= BOARD_SIZE or y >= BOARD_SIZE:
             return False
@@ -117,8 +125,7 @@ class Board:
                 new_board[pos_y - dy, pos_x - dx] = 0
                 # print(f"{player.value} score : {player.capture_score}")
         # self.update_board(new_board)
-
-        return is_capture, new_board, score
+        return (is_capture, new_board, score)
 
     def can_be_captured(self, x, y, player: Player, opponent_value):
         directions = [
@@ -238,15 +245,15 @@ class Board:
                 game.winner = my_player
                 game.game_state = GameState.Finish
             if np.count_nonzero(self.board == 0) == 0:
-                    game.winner = opponent
-                    game.game_state = GameState.Draw
+                game.winner = opponent
+                game.game_state = GameState.Draw
             my_player.last_moves.insert(0, (x, y))
         else:
             print("Illegal moove.")
 
     def update_board(self, new_board):
         self.board = new_board
-    
+
     def deep_copy(self):
         new_board = Board()
         new_board.board = self.board.copy()
