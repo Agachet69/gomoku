@@ -1,6 +1,10 @@
 import pygame
 from game import Game
 from Board import Board
+from player import Player
+from game_state_enum import GameState
+
+from thread import init_threads
 from config import (
     WINDOW_SIZE,
     BOARD_SIZE,
@@ -10,9 +14,145 @@ from config import (
     CELL_SIZE,
     GOBAN,
     WHITE,
+    WHITE_TRANSPARENT,
     GRAY,
     RED,
 )
+
+
+def draw_text(screen, text, font, x, y):
+    label = font.render(text, True, BLACK)
+    rect = label.get_rect(center=(x, y))
+    screen.blit(label, rect)
+    return rect
+
+
+def get_mode(event, game, ia, simple, futur):
+        if ia.collidepoint(event.pos) or simple.collidepoint(event.pos):
+            img_black = pygame.image.load("./assets/black.png").convert_alpha()
+            img_white = pygame.image.load("./assets/white.png").convert_alpha()
+            black = pygame.transform.smoothscale(img_black, (CELL_SIZE, CELL_SIZE))
+            white = pygame.transform.smoothscale(img_white, (CELL_SIZE, CELL_SIZE))
+            P1 = Player(black, "Black", 1)
+            P2 = Player(white, "White", 2)
+            game.set_players(P1, P2)
+            game.game_state = GameState.Playing
+            print("→ Lancement du jeu")
+            if ia.collidepoint(event.pos):
+                init_threads(game)
+        
+
+
+        elif futur.collidepoint(event.pos):
+            img_marseille = pygame.image.load("./assets/marseille.png").convert_alpha()
+            img_psg = pygame.image.load("./assets/psg.png").convert_alpha()
+            marseille = pygame.transform.smoothscale(
+                img_marseille, (CELL_SIZE, CELL_SIZE)
+            )
+            psg = pygame.transform.smoothscale(img_psg, (CELL_SIZE, CELL_SIZE))
+            P1 = Player(marseille, "Marseille", 1)
+            P2 = Player(psg, "PSG", 2)
+            game.set_players(P1, P2)
+            game.game_state = GameState.Playing
+            print("→ Avenir en lecture..")
+
+
+def draw_menu_screen(screen, fonts, game: Game, event):
+    screen.fill((0, 0, 0))
+    screen.fill(GOBAN)
+    screen_rect = screen.get_rect()
+    box_width, box_height = 500, 300
+    box_rect = pygame.Rect(0, 0, box_width, box_height)
+    box_rect.center = screen_rect.center
+    
+    
+    draw_text(
+        screen,
+        "Bienvenue sur Gomoku",
+        fonts["font"],
+        WINDOW_SIZE // 2,
+        WINDOW_SIZE // 4,
+    )
+    text = "Choose a game mode"
+
+    text_surface = fonts["font_big"].render(text, True, BLACK)
+    text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
+
+    first_choice = fonts["font"].render("1. Jouer contre une IA", True, BLACK)
+    second_choice = fonts["font"].render("2. Jouer contre un ami", True, BLACK)
+    third_choice = fonts["font"].render("3. Prevoir l'avenir", True, BLACK)
+    
+    first_choice_rect = first_choice.get_rect(
+        center=(box_rect.centerx, box_rect.top + 130)
+    )
+    second_choice_rect = second_choice.get_rect(
+        center=(box_rect.centerx, box_rect.top + 180)
+    )
+    third_choice_rect = third_choice.get_rect(
+        center=(box_rect.centerx-32, box_rect.top + 230)
+    )
+
+
+    pygame.draw.rect(screen, WHITE, box_rect, border_radius=15)
+    screen.blit(text_surface, text_rect)
+    screen.blit(first_choice, first_choice_rect)
+    screen.blit(second_choice, second_choice_rect)
+    screen.blit(third_choice, third_choice_rect)
+
+
+    pygame.display.flip()
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        get_mode(event, game, first_choice_rect, second_choice_rect, third_choice_rect)
+
+
+def draw_finish_modal(screen, game: Game, fonts, event):
+        screen_rect = screen.get_rect()
+        box_width, box_height = 500, 300
+        box_rect = pygame.Rect(0, 0, box_width, box_height)
+        box_rect.center = screen_rect.center
+
+        modal_surface = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(
+            modal_surface, WHITE_TRANSPARENT, modal_surface.get_rect(), border_radius=15
+        )
+        screen.blit(modal_surface, (box_rect.x, box_rect.y))
+
+        if game.game_state == GameState.Finish:
+            text = f"{game.winner.name} WIN"
+            text_surface = fonts["font_big"].render(text, True, BLACK)
+            text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
+        else:
+            text = "IT'S A DRAW"
+            text_surface = fonts["font_big"].render(text, True, BLACK)
+            text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
+
+        replay_surface = fonts["font"].render("Rejouer", True, BLACK)
+        menu_surface = fonts["font"].render("Menu principal", True, BLACK)
+
+        max_text_width = max(replay_surface.get_width(), menu_surface.get_width())
+        button_width = max_text_width + 40
+        button_height = replay_surface.get_height() + 20
+
+        replay_rect = pygame.Rect(0, 0, button_width, button_height)
+        replay_rect.center = (box_rect.centerx, box_rect.top + 160)
+
+        menu_rect = pygame.Rect(0, 0, button_width, button_height)
+        menu_rect.center = (box_rect.centerx, box_rect.top + 230)
+
+        # pygame.draw.rect(screen, WHITE_TRANSPARANT, box_rect, border_radius=15)
+        pygame.draw.rect(screen, GRAY, replay_rect, border_radius=14)
+        pygame.draw.rect(screen, GRAY, menu_rect, border_radius=14)
+        screen.blit(text_surface, text_rect)
+        screen.blit(replay_surface, replay_surface.get_rect(center=replay_rect.center))
+        screen.blit(menu_surface, menu_surface.get_rect(center=menu_rect.center))
+        pygame.display.flip()
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if replay_rect.collidepoint(event.pos):
+                game.replay()
+            elif menu_rect.collidepoint(event.pos):
+                game.menu()
 
 
 def draw_board(screen, fonts, game: Game):
@@ -104,7 +244,7 @@ def draw_capture_score(screen, fonts, game):
             220,
         ),
     )
-  
+
 
 def draw_title(screen, fonts):
     title = "Gomoku"
