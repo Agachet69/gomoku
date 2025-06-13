@@ -39,6 +39,7 @@ def init_game():
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
     pygame.display.set_caption("Gomoku AI")
 
+
     while game.get_program_run() is True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -56,7 +57,9 @@ def init_game():
             elif (
                 game.game_state == GameState.Finish or game.game_state == GameState.Draw
             ):
-                draw_finish_modal(screen, game, fonts, event)
+                if hasattr(event, 'pos'):
+                    draw_game(screen, fonts, game)
+                    draw_finish_modal(screen, game, fonts, event)
 
         pygame.display.flip()
 

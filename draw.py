@@ -69,7 +69,7 @@ def draw_menu_screen(screen, fonts, game: Game, event):
     draw_text(
         screen,
         "Bienvenue sur Gomoku",
-        fonts["font"],
+        fonts["font_big"],
         WINDOW_SIZE // 2,
         WINDOW_SIZE // 4,
     )
@@ -78,18 +78,18 @@ def draw_menu_screen(screen, fonts, game: Game, event):
     text_surface = fonts["font_big"].render(text, True, BLACK)
     text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
 
-    first_choice = fonts["font"].render("1. Jouer contre une IA", True, BLACK)
-    second_choice = fonts["font"].render("2. Jouer contre un ami", True, BLACK)
+    first_choice = fonts["font"].render("1. Play with AI", True, BLACK)
+    second_choice = fonts["font"].render("2. Play with friend", True, BLACK)
     third_choice = fonts["font"].render("3. Prevoir l'avenir", True, BLACK)
     
     first_choice_rect = first_choice.get_rect(
-        center=(box_rect.centerx, box_rect.top + 130)
+        center=(box_rect.left + first_choice.get_width() / 2 + 80, box_rect.top + 130)
     )
     second_choice_rect = second_choice.get_rect(
-        center=(box_rect.centerx, box_rect.top + 180)
+        center=(box_rect.left + second_choice.get_width() / 2 + 80, box_rect.top + 180)
     )
     third_choice_rect = third_choice.get_rect(
-        center=(box_rect.centerx-32, box_rect.top + 230)
+        center=(box_rect.left + third_choice.get_width() / 2 + 80, box_rect.top + 230)
     )
 
 
@@ -107,52 +107,56 @@ def draw_menu_screen(screen, fonts, game: Game, event):
 
 
 def draw_finish_modal(screen, game: Game, fonts, event):
-        screen_rect = screen.get_rect()
-        box_width, box_height = 500, 300
-        box_rect = pygame.Rect(0, 0, box_width, box_height)
-        box_rect.center = screen_rect.center
+    screen_rect = screen.get_rect()
+    box_width, box_height = 500, 300
+    box_rect = pygame.Rect(0, 0, box_width, box_height)
+    box_rect.center = screen_rect.center
+    modal_surface = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
 
-        modal_surface = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(
-            modal_surface, WHITE_TRANSPARENT, modal_surface.get_rect(), border_radius=15
-        )
-        screen.blit(modal_surface, (box_rect.x, box_rect.y))
+    if game.game_state == GameState.Finish:
+        text = f"{game.winner.name} WIN"
+        text_surface = fonts["font_big"].render(text, True, BLACK)
+        text_rect = text_surface.get_rect(center=(box_width // 2, 60))
+    else:
+        text = "IT'S A DRAW"
+        text_surface = fonts["font_big"].render(text, True, BLACK)
+        text_rect = text_surface.get_rect(center=(box_width // 2, 60))
 
-        if game.game_state == GameState.Finish:
-            text = f"{game.winner.name} WIN"
-            text_surface = fonts["font_big"].render(text, True, BLACK)
-            text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
-        else:
-            text = "IT'S A DRAW"
-            text_surface = fonts["font_big"].render(text, True, BLACK)
-            text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
+    replay_surface = fonts["font"].render("Rejouer", True, BLACK)
+    menu_surface = fonts["font"].render("Menu principal", True, BLACK)
 
-        replay_surface = fonts["font"].render("Rejouer", True, BLACK)
-        menu_surface = fonts["font"].render("Menu principal", True, BLACK)
+    max_text_width = max(replay_surface.get_width(), menu_surface.get_width())
+    button_width = max_text_width + 40
+    button_height = replay_surface.get_height() + 20
 
-        max_text_width = max(replay_surface.get_width(), menu_surface.get_width())
-        button_width = max_text_width + 40
-        button_height = replay_surface.get_height() + 20
+    replay_rect = pygame.Rect(0, 0, button_width, button_height)
+    replay_rect.center = (box_width // 2, 160)
 
-        replay_rect = pygame.Rect(0, 0, button_width, button_height)
-        replay_rect.center = (box_rect.centerx, box_rect.top + 160)
+    menu_rect = pygame.Rect(0, 0, button_width, button_height)
+    menu_rect.center = (box_width // 2, 230)
+    
+    is_hover = box_rect.collidepoint(event.pos)
+    bg_color = WHITE if is_hover else WHITE_TRANSPARENT
+    
+    pygame.draw.rect(
+        modal_surface, bg_color, modal_surface.get_rect(), border_radius=15
+    )
+    modal_surface.blit(text_surface, text_rect)
+    pygame.draw.rect(modal_surface, GRAY, replay_rect, border_radius=14)
+    pygame.draw.rect(modal_surface, GRAY, menu_rect, border_radius=14)
+    modal_surface.blit(
+        replay_surface, replay_surface.get_rect(center=replay_rect.center)
+    )
+    modal_surface.blit(menu_surface, menu_surface.get_rect(center=menu_rect.center))
+    screen.blit(modal_surface, (box_rect.x, box_rect.y))
 
-        menu_rect = pygame.Rect(0, 0, button_width, button_height)
-        menu_rect.center = (box_rect.centerx, box_rect.top + 230)
-
-        # pygame.draw.rect(screen, WHITE_TRANSPARANT, box_rect, border_radius=15)
-        pygame.draw.rect(screen, GRAY, replay_rect, border_radius=14)
-        pygame.draw.rect(screen, GRAY, menu_rect, border_radius=14)
-        screen.blit(text_surface, text_rect)
-        screen.blit(replay_surface, replay_surface.get_rect(center=replay_rect.center))
-        screen.blit(menu_surface, menu_surface.get_rect(center=menu_rect.center))
-        pygame.display.flip()
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if replay_rect.collidepoint(event.pos):
-                game.replay()
-            elif menu_rect.collidepoint(event.pos):
-                game.menu()
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        abs_replay_rect = replay_rect.move(box_rect.topleft)
+        abs_menu_rect = menu_rect.move(box_rect.topleft)
+        if abs_replay_rect.collidepoint(event.pos):
+            game.replay()
+        elif abs_menu_rect.collidepoint(event.pos):
+            game.menu()
 
 
 def draw_board(screen, fonts, game: Game):
