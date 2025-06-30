@@ -183,15 +183,15 @@ def draw_board(screen, fonts, game: Game):
             screen.blit(
                 nb,
                 (
-                    (PADDING + 15) + 50 * i,
-                    160,
+                    (PADDING + 5 + ( 15 if len(str(nb)) == 1 else 0)) + CELL_SIZE * i,
+                    100,
                 ),
             )
             screen.blit(
                 nb,
                 (
-                    160,
-                    (PADDING + 15) + 50 * i,
+                    100,
+                    (PADDING + 5 + ( 15 if len(str(nb)) == 1 else 0)) + CELL_SIZE * i,
                 ),
             )
 

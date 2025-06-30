@@ -11,8 +11,8 @@ from draw import draw_game, draw_finish_modal, draw_menu_screen
 
 def get_fonts():
     fonts = {}
-    fonts["font"] = pygame.font.SysFont(None, 36)
     fonts["little"] = pygame.font.SysFont(None, 24)
+    fonts["font"] = pygame.font.SysFont(None, 36)
     fonts["font_big"] = pygame.font.SysFont(None, 56)
 
     return fonts
