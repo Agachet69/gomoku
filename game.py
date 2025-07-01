@@ -1,6 +1,8 @@
 from player import Player
 from Board import Board
 from game_state_enum import GameState
+import numpy as np
+from config import BOARD_SIZE
 
 
 class Game:
@@ -12,7 +14,8 @@ class Game:
         self.P1 = None
         self.P2 = None
         self.board = Board()
-        # self.historic = []
+        self.historic = []
+        self.step_historic = 0
 
     def set_players(self, P1: Player, P2: Player):
         self.board = Board()
@@ -68,6 +71,27 @@ class Game:
 
     def get_winner(self):
         return self.winner
+    
+    def addHistoric(self, board):
+        if len(self.historic) < 1:
+            self.historic.append(np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.uint8))
+        if self.step_historic < len(self.historic) - 1:
+            self.historic = self.historic[:self.step_historic + 1] 
+        self.historic.append(board)
+        self.step_historic += 1
+        # print(self.step_historic)
+
+    def get_back_historic(self):
+        if self.step_historic > 0:
+            self.has_played()
+            self.step_historic -= 1
+            self.board.board = self.historic[self.step_historic]
+    
+    def get_front_historic(self):
+        if (self.step_historic < len(self.historic) - 1):
+            self.has_played()
+            self.step_historic += 1
+            self.board.board = self.historic[self.step_historic]
 
     def copy(self):
         new_game = Game(self.player_turn)

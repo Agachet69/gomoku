@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from game_state_enum import GameState
+from game_state_enum import GameState, GameType
 from player import Player
 from typing import TYPE_CHECKING, List
 
@@ -240,7 +240,8 @@ class Board:
                 return
             game.has_played()
             self.board[y, x] = my_player.value
-
+            if game.type == GameType.PvP:
+                game.addHistoric(self.board)
             if self.is_winner_moove(my_player, x, y, game):
                 game.winner = my_player
                 game.game_state = GameState.Finish

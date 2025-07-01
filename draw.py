@@ -3,7 +3,7 @@ from game import Game
 from Board import Board
 from player import Player
 from game_state_enum import GameState
-
+from game_state_enum import GameType
 from thread import init_threads
 from config import (
     WINDOW_SIZE,
@@ -37,9 +37,12 @@ def get_mode(event, game, ia, simple, futur):
             P2 = Player(white, "White", 2)
             game.set_players(P1, P2)
             game.game_state = GameState.Playing
-            print("→ Lancement du jeu")
+            print("→ Lancement du jeu") 
             if ia.collidepoint(event.pos):
+                game.type = GameType.AI
                 init_threads(game)
+            else:
+                game.type = GameType.PvP
         
 
 
@@ -278,14 +281,40 @@ def draw_team_side(screen, fonts, game):
         ),
     )
 
+def draw_historic_arrows(screen, fonts, game: Game, event):
+    back = fonts["font"].render("BACK", True, BLACK)
+    front = fonts["font"].render("FRONT", True, BLACK)
+
+    max_text_width = back.get_width()
+    max_front_width = front.get_width()
+    button_width = max_text_width + 40
+    button_width_front = max_front_width + 40
+    button_height = back.get_height() + 20
+    replay_rect = pygame.Rect(0, 0, button_width, button_height)
+    replay_rect_front = pygame.Rect(200, 0, button_width_front, button_height)
+    # replay_rect.center = (box_width // 2, 160)
+    pygame.draw.rect(screen, GRAY, replay_rect, border_radius=14)
+    pygame.draw.rect(screen, GRAY, replay_rect_front, border_radius=14)
+    # pygame.draw.rect(screen, GRAY, menu_rect, border_radius=14)
+    if hasattr(event, 'pos'):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # abs_replay_rect = replay_rect.move(box_rect.topleft)
+            if replay_rect.collidepoint(event.pos):
+                game.get_back_historic()
+            if replay_rect_front.collidepoint(event.pos):
+                game.get_front_historic()
+
+
 
 def draw_game(
     screen,
     fonts,
     game: Game,
+    event
 ):
     draw_board(screen, fonts, game)
     draw_title(screen, fonts)
     draw_turn(screen, fonts, game)
     draw_team_side(screen, fonts, game)
     draw_capture_score(screen, fonts, game)
+    draw_historic_arrows(screen, fonts, game, event)

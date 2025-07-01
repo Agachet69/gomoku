@@ -52,7 +52,7 @@ def init_game():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)
-                draw_game(screen, fonts, game)
+                draw_game(screen, fonts, game, event)
                 pygame.display.flip()
             elif (
                 game.game_state == GameState.Finish or game.game_state == GameState.Draw

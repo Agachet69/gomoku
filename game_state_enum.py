@@ -5,3 +5,7 @@ class GameState(Enum):
     Playing = 1
     Finish = 2
     Draw = 3
+
+class GameType(Enum):
+    AI = 0
+    PvP = 1
