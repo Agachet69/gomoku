@@ -174,7 +174,6 @@ def draw_board(screen, fonts, game: Game):
             (PADDING + CELL_SIZE * 19, PADDING + (CELL_SIZE * i)),
             1,
         )
-        nb = fonts["font"].render(f"{i}", True, BLACK)
         pygame.draw.line(
             screen,
             BLACK,
@@ -182,19 +181,20 @@ def draw_board(screen, fonts, game: Game):
             (PADDING + (CELL_SIZE * i), PADDING + (CELL_SIZE * 19)),
             1,
         )
+        nb = fonts["tinny"].render(f"{i}", True, BLACK)
         if i < 19:
             screen.blit(
                 nb,
                 (
-                    (PADDING + 5 + ( 15 if len(str(nb)) == 1 else 0)) + CELL_SIZE * i,
-                    100,
+                    PADDING + 15 + CELL_SIZE * i,
+                    PADDING - 10,
                 ),
             )
             screen.blit(
                 nb,
                 (
-                    100,
-                    (PADDING + 5 + ( 15 if len(str(nb)) == 1 else 0)) + CELL_SIZE * i,
+                    PADDING - 10,
+                    PADDING + 15 + CELL_SIZE * i,
                 ),
             )
 
@@ -220,12 +220,12 @@ def draw_turn(screen, fonts, game):
     texte_partie1 = fonts["font_big"].render(message_couleur, True, color)
     texte_partie2 = fonts["font_big"].render(" turn.", True, BLACK)
     width_text = texte_partie2.get_width()
-    screen.blit(texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 100))
+    screen.blit(texte_partie1, (WINDOW_SIZE / 2 - width_text, WINDOW_SIZE - 40))
     screen.blit(
         texte_partie2,
         (
             WINDOW_SIZE / 2 - width_text + texte_partie1.get_width(),
-            WINDOW_SIZE - 100,
+            WINDOW_SIZE - 40,
         ),
     )
 
@@ -281,27 +281,27 @@ def draw_team_side(screen, fonts, game):
         ),
     )
 
+
 def draw_historic_arrows(screen, fonts, game: Game, event):
+    screen_rect = screen.get_rect()
     back = fonts["font"].render("BACK", True, BLACK)
     front = fonts["font"].render("FRONT", True, BLACK)
 
-    max_text_width = back.get_width()
-    max_front_width = front.get_width()
-    button_width = max_text_width + 40
-    button_width_front = max_front_width + 40
-    button_height = back.get_height() + 20
-    replay_rect = pygame.Rect(0, 0, button_width, button_height)
-    replay_rect_front = pygame.Rect(200, 0, button_width_front, button_height)
-    # replay_rect.center = (box_width // 2, 160)
-    pygame.draw.rect(screen, GRAY, replay_rect, border_radius=14)
-    pygame.draw.rect(screen, GRAY, replay_rect_front, border_radius=14)
-    # pygame.draw.rect(screen, GRAY, menu_rect, border_radius=14)
+    back_rect = back.get_rect()
+    front_rect = front.get_rect()
+
+    back_rect.midleft = (screen_rect.centery - 100, screen_rect.height - 90)
+    front_rect.midright = (screen_rect.centery + 100, screen_rect.height - 90)
+
+    screen.blit(back, back_rect)
+    screen.blit(front, front_rect)
+
+
     if hasattr(event, 'pos'):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            # abs_replay_rect = replay_rect.move(box_rect.topleft)
-            if replay_rect.collidepoint(event.pos):
+            if back_rect.collidepoint(event.pos):
                 game.get_back_historic()
-            if replay_rect_front.collidepoint(event.pos):
+            if front_rect.collidepoint(event.pos):
                 game.get_front_historic()
 
 
