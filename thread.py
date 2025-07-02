@@ -1,6 +1,6 @@
 import random
 import sys
-from typing import Literal
+from typing import Literal, Tuple
 from Board import Board, HumanMoveManager
 from game import Game
 from game_state_enum import GameState
@@ -44,8 +44,8 @@ POTENTIAL_MOVES_DIRECTIONS = [
 
 
 def init_threads(game):
-    thread1 = threading.Thread(target=thread_opponent, args=(game,))
-    thread1.start()
+    # thread1 = threading.Thread(target=thread_opponent, args=(game,))
+    # thread1.start()
     move_maker_thr = threading.Thread(target=move_maker_thread, args=(game,))
     move_maker_thr.start()
 
@@ -112,6 +112,9 @@ SMALL_GAIN = 1
 
 import numpy as np
 
+def get_kern_row_idx(pos: Tuple[int,int], direction: int = 1, length: int = 5):
+    return pos[0] * np.ones(length, dtype = 'int8'), np.arange(pos[1], pos[1] + direction * length, direction)
+
 def evaluate(game: Game, last_move, player):
     val = 0
     board = game.board.board  # np.ndarray 2D
@@ -120,49 +123,54 @@ def evaluate(game: Game, last_move, player):
     rows, cols = board.shape
     x, y = last_move  # (colonne, ligne)
 
-    directions = [
-        (1, 0),   # horizontal →
-        (0, 1),   # vertical ↓
-        (1, 1),   # diagonale ↘
-        (1, -1),  # diagonale ↗
+    directions = [1,-1
     ]
 
-    for dx, dy in directions:
-        count = 1  # pion placé
+    # dir_
+    
+    # extend_grid = np.pad(game.board.board, (0, 5), "constant", constant_values=(0, 0))
 
-        nx, ny = x + dx, y + dy
-        while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
-            count += 1
-            nx += dx
-            ny += dy
 
-        nx, ny = x - dx, y - dy
-        while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
-            count += 1
-            nx -= dx
-            ny -= dy
+    for dir in directions:
+        print(get_kern_row_idx(last_move, direction=dir))
 
-        if count >= 5:
-            val += BIG_GAIN
-        elif count == 4:
-            val += 3 * NORMAL_GAIN
-        elif count == 3:
-            val += 2 * NORMAL_GAIN
-        elif count == 2:
-            val += NORMAL_GAIN
 
-        for sign in [1, -1]:
-            cx, cy = x + sign * dx, y + sign * dy
-            cx2, cy2 = x + sign * 2 * dx, y + sign * 2 * dy
-            cx3, cy3 = x + sign * 3 * dx, y + sign * 3 * dy
+    # for dx, dy in directions:
+    #     count = 1  # pion placé
 
-            if (
-                0 <= cy3 < rows and 0 <= cx3 < cols
-                and board[cy, cx] == opponent_value
-                and board[cy2, cx2] == opponent_value
-                and board[cy3, cx3] == player_value
-            ):
-                val += NORMAL_GAIN * 2 + NORMAL_GAIN * player.capture_score if player.capture_score != 9 else BIG_GAIN
+    #     nx, ny = x + dx, y + dy
+    #     while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
+    #         count += 1
+    #         nx += dx
+    #         ny += dy
+
+    #     nx, ny = x - dx, y - dy
+    #     while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
+    #         count += 1
+    #         nx -= dx
+    #         ny -= dy
+
+    #     if count >= 5:
+    #         val += BIG_GAIN
+    #     elif count == 4:
+    #         val += 3 * NORMAL_GAIN
+    #     elif count == 3:
+    #         val += 2 * NORMAL_GAIN
+    #     elif count == 2:
+    #         val += NORMAL_GAIN
+
+    #     for sign in [1, -1]:
+    #         cx, cy = x + sign * dx, y + sign * dy
+    #         cx2, cy2 = x + sign * 2 * dx, y + sign * 2 * dy
+    #         cx3, cy3 = x + sign * 3 * dx, y + sign * 3 * dy
+
+    #         if (
+    #             0 <= cy3 < rows and 0 <= cx3 < cols
+    #             and board[cy, cx] == opponent_value
+    #             and board[cy2, cx2] == opponent_value
+    #             and board[cy3, cx3] == player_value
+    #         ):
+    #             val += NORMAL_GAIN * 2 + NORMAL_GAIN * player.capture_score if player.capture_score != 9 else BIG_GAIN
 
     return val
 
