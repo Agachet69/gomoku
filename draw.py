@@ -16,9 +16,10 @@ from config import (
     WHITE,
     WHITE_TRANSPARENT,
     GRAY,
+    GRAY_ARROW,
     RED,
 )
-
+import pygame.gfxdraw
 
 def draw_text(screen, text, font, x, y):
     label = font.render(text, True, BLACK)
@@ -234,21 +235,21 @@ def draw_capture_score(screen, fonts, game):
     msg_capture_P1 = f"Captures: {game.P1.capture_score}"
     msg_capture_P2 = f"Captures: {game.P2.capture_score}"
 
-    number_captures_P1 = fonts["little"].render(msg_capture_P1, True, BLACK)
-    number_captures_P2 = fonts["little"].render(msg_capture_P2, True, BLACK)
+    number_captures_P1 = fonts["little_tinny"].render(msg_capture_P1, True, BLACK)
+    number_captures_P2 = fonts["little_tinny"].render(msg_capture_P2, True, BLACK)
 
     screen.blit(
         number_captures_P2,
         (
-            20,
-            220,
+            10,
+            180,
         ),
     )
     screen.blit(
         number_captures_P1,
         (
-            1160,
-            220,
+            WINDOW_SIZE - PADDING + 10,
+            180,
         ),
     )
 
@@ -268,7 +269,7 @@ def draw_team_side(screen, fonts, game):
     screen.blit(
         P1_team_screen,
         (
-            WINDOW_SIZE * 0.9,
+            WINDOW_SIZE - PADDING + 10,
             150,
         ),
     )
@@ -276,34 +277,54 @@ def draw_team_side(screen, fonts, game):
     screen.blit(
         P2_team_screen,
         (
-            WINDOW_SIZE / 20,
+            10,
             150,
         ),
     )
 
 
+def draw_arrow(screen, color, x, y, orientation, width=30, height=25):
+    """
+    Dessine une flèche pointant soit vers 
+    la droite soit vers la gauche.
+    """
+    half_height = height // 2
+    if orientation == "right":
+        points =    [
+            (x, y - half_height),       # coin haut gauche
+            (x + width, y),             # pointe droite
+            (x, y + half_height),       # coin bas gauche
+        ]
+    else:
+        points = [
+            (x, y),                     # pointe gauche
+            (x + width, y - half_height),  # coin haut droit
+            (x + width, y + half_height),  # coin bas droit
+        ]   
+
+    pygame.gfxdraw.filled_polygon(screen, points, color)
+    pygame.gfxdraw.aapolygon(screen, points, color)
+
+    arrow_rect = pygame.Rect(min(p[0] for p in points),
+                             min(p[1] for p in points),
+                             max(p[0] for p in points) - min(p[0] for p in points),
+                             max(p[1] for p in points) - min(p[1] for p in points))
+
+    return arrow_rect
+
+
 def draw_historic_arrows(screen, fonts, game: Game, event):
     screen_rect = screen.get_rect()
-    back = fonts["font"].render("BACK", True, BLACK)
-    front = fonts["font"].render("FRONT", True, BLACK)
 
-    back_rect = back.get_rect()
-    front_rect = front.get_rect()
-
-    back_rect.midleft = (screen_rect.centery - 100, screen_rect.height - 90)
-    front_rect.midright = (screen_rect.centery + 100, screen_rect.height - 90)
-
-    screen.blit(back, back_rect)
-    screen.blit(front, front_rect)
-
+    left_rect = draw_arrow(screen, BLACK if game.step_historic > 0 else GRAY_ARROW, screen_rect.centerx - 90, screen_rect.height - 105, 'left')
+    right_rect = draw_arrow(screen, BLACK if game.step_historic < len(game.historic) - 1 else GRAY_ARROW, screen_rect.centerx + 90, screen_rect.height - 105, 'right')
 
     if hasattr(event, 'pos'):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if back_rect.collidepoint(event.pos):
+            if left_rect.collidepoint(event.pos):
                 game.get_back_historic()
-            if front_rect.collidepoint(event.pos):
+            if right_rect.collidepoint(event.pos):
                 game.get_front_historic()
-
 
 
 def draw_game(

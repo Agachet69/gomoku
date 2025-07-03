@@ -249,8 +249,8 @@ class Board:
                 game.winner = opponent
                 game.game_state = GameState.Draw
             my_player.last_moves.insert(0, (x, y))
-        else:
-            print("Illegal moove.")
+        # else:
+        #     print("Illegal moove.")
 
     def update_board(self, new_board):
         self.board = new_board

@@ -33,6 +33,9 @@ class Game:
     def get_opponent_value(self):
         return 1 if self.player_turn == 2 else 2
     
+    def get_player_value(self):
+        return 2 if self.player_turn == 2 else 1
+    
     def get_me_value(self):
         return 1 if self.player_turn == 1 else 2
     
@@ -79,18 +82,31 @@ class Game:
             self.historic = self.historic[:self.step_historic + 1] 
         self.historic.append(board)
         self.step_historic += 1
-        # print(self.step_historic)
 
     def get_back_historic(self):
         if self.step_historic > 0:
             self.has_played()
             self.step_historic -= 1
+            opponent_value = self.get_opponent_value()
+            actual_opponent_count = np.count_nonzero(self.board.board == opponent_value)
+            old_opponent_count = np.count_nonzero(self.historic[self.step_historic] == opponent_value)
+            if old_opponent_count > actual_opponent_count:
+                diff = old_opponent_count - actual_opponent_count
+                player = self.get_player(1 if opponent_value == 2 else 2)
+                player.capture_score -= diff
             self.board.board = self.historic[self.step_historic]
     
     def get_front_historic(self):
         if (self.step_historic < len(self.historic) - 1):
             self.has_played()
             self.step_historic += 1
+            player_value = self.get_player_value()
+            old_player_count = np.count_nonzero(self.board.board == player_value)
+            actual_player_count = np.count_nonzero(self.historic[self.step_historic] == player_value)
+            diff = old_player_count - actual_player_count
+            if diff > 1:
+                player = self.get_player(1 if player_value == 2 else 2)
+                player.capture_score += diff
             self.board.board = self.historic[self.step_historic]
 
     def copy(self):
