@@ -1,6 +1,7 @@
 class Player:
-    def __init__(self, path, name, value):
+    def __init__(self, path, path_hover, name, value):
         self.img_path = path
+        self.img_hover = path_hover
         self.name = name
         self.mooves = 0
         self.capture_score = 0

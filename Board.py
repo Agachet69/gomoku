@@ -29,8 +29,10 @@ class Board:
     def __init__(self):
         self.board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.uint8)
         self.human_best_moves: List[HumanMoveManager] = []
+        self.temp_stonex = None
+        self.temp_stoney = None
 
-    def is_on_board(x, y):
+    def is_on_board(self, x, y):
         if not (0 <= x < BOARD_SIZE) or not (0 <= y < BOARD_SIZE):
             return False
         return True
@@ -49,14 +51,22 @@ class Board:
             pos_y, pos_x = y + dy, x + dx
             stones = 1
 
-            while stones < 4 and self.is_on_board(x,  y) and board[pos_y, pos_x] == pvalue:
+            while (
+                stones < 4
+                and self.is_on_board(pos_x, pos_y)
+                and board[pos_y, pos_x] == pvalue
+            ):
                 stones += 1
                 pos_y += dy
                 pos_x += dx
             
             pos_y, pos_x = y - dy, x - dx
 
-            while stones < 4 and self.is_on_board(x,  y) and board[pos_y, pos_x] == pvalue:
+            while (
+                stones < 4
+                and self.is_on_board(pos_x, pos_y)
+                and board[pos_y, pos_x] == pvalue
+            ):
                 stones += 1
                 pos_y -= dy
                 pos_x -= dx
@@ -102,6 +112,10 @@ class Board:
 
         board[y, x] = 0
         return False
+
+    def set_temp_stone(self, x, y):
+        self.temp_stonex = x
+        self.temp_stoney = y
 
     def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
         directions = [

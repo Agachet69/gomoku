@@ -1,4 +1,5 @@
 import pygame
+import pygame.gfxdraw
 from game import Game
 from Board import Board
 from player import Player
@@ -19,7 +20,6 @@ from config import (
     GRAY_ARROW,
     RED,
 )
-import pygame.gfxdraw
 
 def draw_text(screen, text, font, x, y):
     label = font.render(text, True, BLACK)
@@ -34,8 +34,12 @@ def get_mode(event, game, ia, simple, futur):
             img_white = pygame.image.load("./assets/white.png").convert_alpha()
             black = pygame.transform.smoothscale(img_black, (CELL_SIZE, CELL_SIZE))
             white = pygame.transform.smoothscale(img_white, (CELL_SIZE, CELL_SIZE))
-            P1 = Player(black, "Black", 1)
-            P2 = Player(white, "White", 2)
+            black_hover = black.copy()
+            black_hover.set_alpha(128)
+            white_hover = white.copy()
+            white_hover.set_alpha(128)
+            P1 = Player(black, black_hover, "Black", 1)
+            P2 = Player(white, white_hover, "White", 2)
             game.set_players(P1, P2)
             game.game_state = GameState.Playing
             print("→ Lancement du jeu") 
@@ -54,8 +58,12 @@ def get_mode(event, game, ia, simple, futur):
                 img_marseille, (CELL_SIZE, CELL_SIZE)
             )
             psg = pygame.transform.smoothscale(img_psg, (CELL_SIZE, CELL_SIZE))
-            P1 = Player(marseille, "Marseille", 1)
-            P2 = Player(psg, "PSG", 2)
+            marseille_hover = marseille.copy()
+            marseille_hover.set_alpha(128)
+            psg_hover = psg.copy()
+            psg_hover.set_alpha(128)
+            P1 = Player(marseille, marseille_hover, "Marseille", 1)
+            P2 = Player(psg, psg_hover, "PSG", 2)
             game.set_players(P1, P2)
             game.game_state = GameState.Playing
             print("→ Avenir en lecture..")
@@ -161,6 +169,11 @@ def draw_finish_modal(screen, game: Game, fonts, event):
             game.replay()
         elif abs_menu_rect.collidepoint(event.pos):
             game.menu()
+
+def draw_temporary_stone(x, y, screen, player):
+    px = (WINDOW_SIZE - GAME_SIZE) / 2 + x * CELL_SIZE
+    py = (WINDOW_SIZE - GAME_SIZE) / 2 + y * CELL_SIZE
+    screen.blit(player.img_hover, (px, py))
 
 
 def draw_board(screen, fonts, game: Game):
@@ -338,4 +351,5 @@ def draw_game(
     draw_turn(screen, fonts, game)
     draw_team_side(screen, fonts, game)
     draw_capture_score(screen, fonts, game)
-    draw_historic_arrows(screen, fonts, game, event)
+    if game.type == GameType.PvP:
+        draw_historic_arrows(screen, fonts, game, event)

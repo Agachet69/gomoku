@@ -7,7 +7,7 @@ import sys
 import time
 
 from config import WINDOW_SIZE, BLACK, GAME_SIZE, CELL_SIZE, GOBAN, WHITE, GRAY, RED
-from draw import draw_game, draw_finish_modal, draw_menu_screen
+from draw import draw_game, draw_finish_modal, draw_menu_screen, draw_temporary_stone
 
 def get_fonts():
     fonts = {}
@@ -55,6 +55,19 @@ def init_game():
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)
                 draw_game(screen, fonts, game, event)
+                if event.type == pygame.MOUSEMOTION:
+                    if hasattr(event, 'pos'):
+                        x, y = get_grid_position(event.pos)
+                        if x != game.board.temp_stonex or y != game.board.temp_stoney:
+                            if (
+                                not game.board.is_legal_moove(x, y)
+                                or game.board.is_double_three(x, y, game)
+                            ):
+                                continue
+                            my_player = game.get_player(game.get_me_value())
+                        draw_temporary_stone(x, y, screen, my_player)
+                        game.board.set_temp_stone(x, y)
+                    
                 pygame.display.flip()
             elif (
                 game.game_state == GameState.Finish or game.game_state == GameState.Draw
