@@ -103,11 +103,6 @@ class Board:
         board[y, x] = 0
         return False
 
-    def is_on_board(self, x, y):
-        if x < 0 or y < 0 or x >= BOARD_SIZE or y >= BOARD_SIZE:
-            return False
-        return True
-
     def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
         directions = [
             (1, 0),
