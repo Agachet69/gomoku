@@ -41,6 +41,30 @@ class Board:
         if self.board[y, x] != 0:
             return False
         return True
+    
+    def is_more_than_three(self, board, x, y, pvalue):
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+
+        for dx, dy in directions:
+            pos_y, pos_x = y + dy, x + dx
+            stones = 1
+
+            while stones < 4 and self.is_on_board(x,  y) and board[pos_y, pos_x] == pvalue:
+                stones += 1
+                pos_y += dy
+                pos_x += dx
+            
+            pos_y, pos_x = y - dy, x - dx
+
+            while stones < 4 and self.is_on_board(x,  y) and board[pos_y, pos_x] == pvalue:
+                stones += 1
+                pos_y -= dy
+                pos_x -= dx
+
+            if stones > 3:
+                return True
+            
+        return False
 
     def is_double_three(self, x, y, game: Game):
         player_value = game.get_me_value()
@@ -54,7 +78,8 @@ class Board:
 
         board[y, x] = player_value
         free_three_count = 0
-
+        if self.is_more_than_three(board, x, y, player_value):
+            return False
         for dx, dy in directions:
             line = []
             for i in range(-5, 6):

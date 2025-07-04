@@ -60,7 +60,7 @@ def init_game():
                 game.game_state == GameState.Finish or game.game_state == GameState.Draw
             ):
                 if hasattr(event, 'pos'):
-                    draw_game(screen, fonts, game)
+                    draw_game(screen, fonts, game, event)
                     draw_finish_modal(screen, game, fonts, event)
 
         pygame.display.flip()
