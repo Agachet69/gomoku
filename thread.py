@@ -210,6 +210,16 @@ def find_longest(extended_board, last_move: Tuple[int, int]):
     # print(horizontal)
     # right = kern_trad(extended_board, get_kern_col_idx(last_move, direction=1, length=5))
 
+
+def check_neighbor(extended_board, last_move):
+    mid_col = kern_trad(extended_board, get_kern_col_idx(np.add(last_move, (0, -1)), length=3))
+    mid_row = kern_trad(extended_board, get_kern_row_idx(np.add(last_move, (-1, 0)), length=3))
+
+    player = mid_col[1]
+
+    values = [mid_col[0], mid_col[2], mid_row[0], mid_row[2]]
+
+    return values.count(player)
             
 
 
@@ -241,6 +251,10 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
     #     val += 6 * SMALL_GAIN
     # elif longest == 5:
     #     val += BIG_GAIN
+
+    val += check_neighbor(extended_board, last_move)
+
+
 
     return val
 
