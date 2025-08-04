@@ -5,6 +5,7 @@ class GameState(Enum):
     Playing = 1
     Finish = 2
     Draw = 3
+    LastChance = 4
 
 class GameType(Enum):
     AI = 0

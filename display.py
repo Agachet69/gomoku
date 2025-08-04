@@ -50,7 +50,7 @@ def init_game():
 
             elif game.game_state == GameState.Creating:
                 draw_menu_screen(screen, fonts, game, event)
-            elif game.game_state == GameState.Playing:
+            elif game.game_state == GameState.Playing or game.game_state == GameState.LastChance:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)

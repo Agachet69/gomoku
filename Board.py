@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from game import Game
 
 from config import BOARD_SIZE
-
+from capture import can_capture_winning_sequences
 
 class HumanMoveManager:
     def __init__(self, move):
@@ -117,49 +117,95 @@ class Board:
         self.temp_stonex = x
         self.temp_stoney = y
 
-    def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
+    def is_capture(self, board, move, player):
+        """
+        Vérifie si le mouvement 'move' (tuple (x, y)) du joueur 'player' 
+        capture 2 pierres adverses sur le plateau 'board' (np.ndarray 19x19 
+        d'entiers 0, 1 ou 2). Retourne une liste des positions capturées, 
+        ou [] si aucune capture.
+        """
+        x, y = move
+        opp = 2 if player == 1 else 1
+        captures = []
         directions = [
-            (1, 0),
-            (0, 1),
-            (1, 1),
-            (1, -1),
-            (-1, 0),
-            (0, -1),
-            (-1, -1),
-            (-1, 1),
+            ((0, 1), (0, -1)),
+            ((1, 0), (-1, 0)),
+            ((1, 1), (-1, -1)),
+            ((1, -1), (-1, 1)),
         ]
-        new_board = game.board.board.copy()
-        is_capture = False
-        score = 0
+        for dir1, dir2 in directions:
+            # Cherche motif adversaire-adversaire dans chaque direction à partir du coup
+            for dx, dy in [(dir1[0], dir1[1]), (dir2[0], dir2[1])]:
+                nx1, ny1 = x + dx, y + dy
+                nx2, ny2 = x + 2*dx, y + 2*dy
+                nx3, ny3 = x + 3*dx, y + 3*dy
+                # Vérifie la séquence [player, opp, opp, player] (le coup vient d’être joué à x,y)
+                if (0 <= nx3 < BOARD_SIZE and 0 <= ny3 < BOARD_SIZE):
+                    if (board[ny1, nx1] == opp and
+                        board[ny2, nx2] == opp and
+                        board[ny3, nx3] == player):
+                        captures.extend([(nx1, ny1), (nx2, ny2)])
+        # Ne retourne que les pierres uniques capturées (set)
+        return list(set(captures))
+    
+    def remove_captured_stones(self, board, captured, game):
+        """
+        Retire les pierres capturées du plateau.
+        board       : np.ndarray 19x19 (modifié en place)
+        captured    : liste de tuples (x, y) à effacer
+        """
+        if not captured:
+            return
+        xs, ys = zip(*captured)
+        if game.game_state == GameState.LastChance:
+            if not set(game.last_chance_capture).isdisjoint(set(captured)):
+                game.game_state == GameState.Playing
+                game.last_chance_capture = []
+        board[ys, xs] = 0  # Mettre à zéro toutes les cases capturées en une seule opération NumPy
 
-        for dy, dx in directions:
-            stones = 0
-            pos_y, pos_x = y + dy, x + dx
-            while (
-                self.is_on_board(pos_x, pos_y)
-                and self.board[pos_y, pos_x] == my_opponent
-            ):
-                stones += 1
-                pos_y += dy
-                pos_x += dx
+    # def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
+    #     directions = [
+    #         (1, 0),
+    #         (0, 1),
+    #         (1, 1),
+    #         (1, -1),
+    #         (-1, 0),
+    #         (0, -1),
+    #         (-1, -1),
+    #         (-1, 1),
+    #     ]
+    #     new_board = game.board.board.copy()
+    #     is_capture = False
+    #     score = 0
 
-            if (
-                self.is_on_board(pos_x, pos_y)
-                and stones == 2
-                and self.board[pos_y, pos_x] == player.value
-            ):
-                pos_y -= dy
-                pos_x -= dx
-                if not self.is_on_board(pos_x, pos_y):
-                    continue
-                score += 2
-                is_capture = True
-                # player.capture_score += 2
-                new_board[pos_y, pos_x] = 0
-                new_board[pos_y - dy, pos_x - dx] = 0
-                # print(f"{player.value} score : {player.capture_score}")
-        # self.update_board(new_board)
-        return (is_capture, new_board, score)
+    #     for dy, dx in directions:
+    #         stones = 0
+    #         pos_y, pos_x = y + dy, x + dx
+    #         while (
+    #             self.is_on_board(pos_x, pos_y)
+    #             and self.board[pos_y, pos_x] == my_opponent
+    #         ):
+    #             stones += 1
+    #             pos_y += dy
+    #             pos_x += dx
+
+    #         if (
+    #             self.is_on_board(pos_x, pos_y)
+    #             and stones == 2
+    #             and self.board[pos_y, pos_x] == player.value
+    #         ):
+    #             pos_y -= dy
+    #             pos_x -= dx
+    #             if not self.is_on_board(pos_x, pos_y):
+    #                 continue
+    #             score += 2
+    #             is_capture = True
+    #             # player.capture_score += 2
+    #             new_board[pos_y, pos_x] = 0
+    #             new_board[pos_y - dy, pos_x - dx] = 0
+    #             # print(f"{player.value} score : {player.capture_score}")
+    #     # self.update_board(new_board)
+    #     return (is_capture, new_board, score)
 
     def can_be_captured(self, x, y, player: Player, opponent_value):
         directions = [
@@ -254,6 +300,37 @@ class Board:
                 return True
 
         return False
+    
+    def detect_winning_sequences(self, board, move, player_value):
+        x, y = move
+        winning_sequences = []
+        directions = [
+            (1, 0),
+            (0, 1),
+            (1, 1),
+            (1, -1),
+        ]
+        
+        for dx, dy in directions:
+            for offset in range(-4, 1):
+                seq = []
+                valid_seq = True
+                for i in range(5):
+                    nx = x + (offset + i) * dx
+                    ny = y + (offset + i) * dy
+                    if 0 <= nx < BOARD_SIZE and 0 <= ny < BOARD_SIZE:
+                        if board[ny, nx] == player_value:
+                            seq.append((nx, ny))
+                        else:
+                            valid_seq = False
+                            break
+                    else:
+                        valid_seq = False
+                        break
+                if valid_seq and len(seq) == 5:
+                    winning_sequences.append(seq)
+        return winning_sequences
+    
 
     def play_moove(self, game: Game, x, y):
         if self.is_legal_moove(x, y):
@@ -261,24 +338,38 @@ class Board:
             if my_player.value == 2:
                 self.human_best_moves = []
             opponent = game.get_opponent(my_player.value)
-            captured, new_board, score = self.check_is_capture_moove(
-                game, my_player, opponent.value, x, y
-            )
-            my_player.capture_score += score
-            self.update_board(new_board)
-            if self.has_player_won(opponent.value):
-                game.winner = opponent
-                game.game_state = GameState.Finish
-            if captured is False and self.is_double_three(x, y, game):
-                print("Illegal moove double three.")
-                return
-            game.has_played()
-            self.board[y, x] = my_player.value
-            if game.type == GameType.PvP:
-                game.addHistoric(self.board)
-            if self.is_winner_moove(my_player, x, y, game):
+            captured = self.is_capture(self.board, (x, y), my_player.value)
+            self.remove_captured_stones(self.board, captured)
+            if game.game_state == GameState.LastChance:
                 game.winner = my_player
                 game.game_state = GameState.Finish
+            stones_captured = len(captured)
+            my_player.capture_score += stones_captured
+
+            if stones_captured == 0 and self.is_double_three(x, y, game):
+                print("Illegal moove double three.")
+                return
+            
+            game.has_played()
+            self.board[y, x] = my_player.value
+
+            winning_seq = self.detect_winning_sequences(self.board, (x, y), my_player.value)
+            if len(winning_seq) > 0:
+                if can_capture_winning_sequences(self.board, winning_seq, my_player.value):
+                    game.game_state = GameState.LastChance
+                    print("L'adversaire peut capturer une pierre de la séquence gagnante")
+                else:
+                    game.winner = my_player
+                    # self.has_player_won(my_player.value)
+                    game.game_state = GameState.Finish
+
+
+
+            if game.type == GameType.PvP:
+                game.addHistoric(self.board)
+            # if self.is_winner_moove(my_player, x, y, game):
+            #     game.winner = my_player
+            #     game.game_state = GameState.Finish
             if np.count_nonzero(self.board == 0) == 0:
                 game.winner = opponent
                 game.game_state = GameState.Draw
