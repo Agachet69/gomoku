@@ -61,7 +61,7 @@ def init_game():
                         if x != game.board.temp_stonex or y != game.board.temp_stoney:
                             if (
                                 not game.board.is_legal_moove(x, y)
-                                or game.board.is_double_three(x, y, game)
+                                # or game.board.is_double_three(x, y, game)
                             ):
                                 continue
                             my_player = game.get_player(game.get_me_value())
