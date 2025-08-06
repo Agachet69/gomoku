@@ -227,29 +227,27 @@ class Board:
         board[y, x] = player_value
         count = 0
 
-        vert_min = y - 5 if y - 5 >= 0 else 0
-        horriz_min = x - 5 if x - 5 >= 0 else 0
+        vert_min = y - 4 if y - 4 >= 0 else 0
+        horriz_min = x - 4 if x - 4 >= 0 else 0
         vert_max = y + 5 if y + 5 < BOARD_SIZE else BOARD_SIZE
         horriz_max = x + 5 if x + 5 < BOARD_SIZE else BOARD_SIZE
-        print(f"vert_min : {vert_min}")
-        print(f"horriz_min : {horriz_min}")
-        print(f"vert_max : {vert_max}")
-        print(f"horriz_max : {horriz_max}")
+
         count += self.count_three_open(board[vert_min:vert_max, x], player_value)
         count += self.count_three_open(board[y, horriz_min:horriz_max], player_value)
         
+        diagonal = board.diagonal(x - y)
+        anti_diag = np.fliplr(board).diagonal(18 - x - y)
+        if len(diagonal >= 5):
+            min = x - 4 if x - 4 < 0 else 0
+            max = x + 4 if x + 4 < BOARD_SIZE else BOARD_SIZE
+            count += self.count_three_open(diagonal[min:max], player_value)
+        if len(anti_diag >= 5):
+            count += self.count_three_open(anti_diag[min:max], player_value)
+
         print(count)
         if count > 1:
+            print("Illegal moove double three.")
             return True
-        # for offset in range(x - 4, x + 4):
-        #     diag = board.diagonal(offset)
-        #     print(diag)
-        #     anti_diag = np.fliplr(board).diagonal(offset)
-        #     print(anti_diag)
-        #     if len(diag) >= 5 and self.count_three_open(diag, player) > 1:
-        #         return True
-        #     if len(anti_diag) >= 5 and self.count_three_open(anti_diag, player) > 1:
-        #         return True
         return False
 
     def can_be_captured(self, x, y, player: Player, opponent_value):
@@ -395,7 +393,7 @@ class Board:
             print(dT)
 
             if stones_captured == 0 and self.is_double_three(x, y, game):
-                print("Illegal moove double three.")
+                # print("Illegal moove double three.")
                 return
 
             game.has_played()
