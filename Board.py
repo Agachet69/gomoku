@@ -163,90 +163,58 @@ class Board:
                 game.last_chance_capture = []
         board[ys, xs] = 0
 
-    # def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
-    #     directions = [
-    #         (1, 0),
-    #         (0, 1),
-    #         (1, 1),
-    #         (1, -1),
-    #         (-1, 0),
-    #         (0, -1),
-    #         (-1, -1),
-    #         (-1, 1),
-    #     ]
-    #     new_board = game.board.board.copy()
-    #     is_capture = False
-    #     score = 0
-
-    #     for dy, dx in directions:
-    #         stones = 0
-    #         pos_y, pos_x = y + dy, x + dx
-    #         while (
-    #             self.is_on_board(pos_x, pos_y)
-    #             and self.board[pos_y, pos_x] == my_opponent
-    #         ):
-    #             stones += 1
-    #             pos_y += dy
-    #             pos_x += dx
-
-    #         if (
-    #             self.is_on_board(pos_x, pos_y)
-    #             and stones == 2
-    #             and self.board[pos_y, pos_x] == player.value
-    #         ):
-    #             pos_y -= dy
-    #             pos_x -= dx
-    #             if not self.is_on_board(pos_x, pos_y):
-    #                 continue
-    #             score += 2
-    #             is_capture = True
-    #             # player.capture_score += 2
-    #             new_board[pos_y, pos_x] = 0
-    #             new_board[pos_y - dy, pos_x - dx] = 0
-    #             # print(f"{player.value} score : {player.capture_score}")
-    #     # self.update_board(new_board)
-    #     return (is_capture, new_board, score)
-
     def count_three_open(self, line, player):
         patterns = [
             [0, player, player, player, 0],
             [0, player, 0, player, player, 0],
             [0, player, player, 0, player, 0],
         ]
-        print(line)
         for i in range(len(line) - 4):
             for pattern in patterns:
                 if list(line[i : i + len(pattern)]) == pattern:
-                    print('+1')
                     return 1
         return 0
 
-    def detect_double_three_anywhere(self, board, player_value, x, y):
-        # Check rows and columns
-        board = self.board.copy()
-        board[y, x] = player_value
+    def detect_double_three_anywhere(self, player_value, x, y):
+        new_board = self.board.copy()
+        new_board[y, x] = player_value
         count = 0
+        if self.detect_winning_sequences(new_board, (x, y), player_value):
+            return False
 
         vert_min = y - 4 if y - 4 >= 0 else 0
         horriz_min = x - 4 if x - 4 >= 0 else 0
         vert_max = y + 5 if y + 5 < BOARD_SIZE else BOARD_SIZE
         horriz_max = x + 5 if x + 5 < BOARD_SIZE else BOARD_SIZE
 
-        count += self.count_three_open(board[vert_min:vert_max, x], player_value)
-        count += self.count_three_open(board[y, horriz_min:horriz_max], player_value)
-        
-        diagonal = board.diagonal(x - y)
-        anti_diag = np.fliplr(board).diagonal(18 - x - y)
-        if len(diagonal >= 5):
-            min = x - 4 if x - 4 < 0 else 0
-            max = x + 4 if x + 4 < BOARD_SIZE else BOARD_SIZE
+        count += self.count_three_open(new_board[vert_min:vert_max, x], player_value)
+        count += self.count_three_open(
+            new_board[y, horriz_min:horriz_max], player_value
+        )
+
+        diagonal = new_board.diagonal(x - y)
+        anti_diag = np.fliplr(new_board).diagonal(18 - x - y)
+        if len(diagonal) >= 5:
+            position_in_line = x if y >= x else y
+            min = 0 if position_in_line - 4 < 0 else position_in_line - 4
+            max = (
+                len(diagonal)
+                if position_in_line + 5 >= len(diagonal)
+                else position_in_line + 5
+            )
             count += self.count_three_open(diagonal[min:max], player_value)
-        if len(anti_diag >= 5):
+        if len(anti_diag) >= 5:
+            position_in_line = y if x + y <= 18 else 18 - x
+
+            min = 0 if position_in_line - 4 < 0 else position_in_line - 4
+            max = (
+                len(anti_diag)
+                if position_in_line + 5 >= len(anti_diag)
+                else position_in_line + 5
+            )
             count += self.count_three_open(anti_diag[min:max], player_value)
 
-        print(count)
         if count > 1:
-            print("Illegal moove double three.")
             return True
         return False
 
@@ -387,13 +355,12 @@ class Board:
                 game.game_state = GameState.Finish
             stones_captured = len(captured)
             my_player.capture_score += stones_captured
-            
-            print('dT')
-            dT = self.detect_double_three_anywhere(self.board, my_player.value, x, y)
-            print(dT)
 
-            if stones_captured == 0 and self.is_double_three(x, y, game):
-                # print("Illegal moove double three.")
+            if stones_captured == 0 and self.detect_double_three_anywhere(
+                my_player.value, x, y
+            ):
+                # self.is_double_three(x, y, game):
+                print("Illegal moove double three.")
                 return
 
             game.has_played()
@@ -416,7 +383,7 @@ class Board:
                     game.game_state = GameState.Finish
 
             if game.type == GameType.PvP:
-                game.addHistoric(self.board)
+                game.addHistoric(self.board.copy())
             # if self.is_winner_moove(my_player, x, y, game):
             #     game.winner = my_player
             #     game.game_state = GameState.Finish
