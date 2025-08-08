@@ -1,6 +1,8 @@
 import random
 import sys
-from typing import Literal
+from typing import Literal, Tuple
+
+import pygame
 from Board import Board, HumanMoveManager
 from game import Game
 from game_state_enum import GameState
@@ -11,6 +13,21 @@ import numpy as np
 from player import Player
 # from heuristic import evaluate
 from concurrent.futures import ThreadPoolExecutor
+
+
+
+
+BIG_LOSS = -1000000
+BIG_GAIN = 1000000
+NORMAL_GAIN = 100
+SMALL_GAIN = 1
+
+
+
+
+DEPTH_MAX = 1
+NUMBER_BEST_MOVES = 4
+
 
 executor = ThreadPoolExecutor(max_workers=4)  # ajuste ce nombre selon ta machine
 
@@ -44,8 +61,8 @@ POTENTIAL_MOVES_DIRECTIONS = [
 
 
 def init_threads(game):
-    thread1 = threading.Thread(target=thread_opponent, args=(game,))
-    thread1.start()
+    # thread1 = threading.Thread(target=thread_opponent, args=(game,))
+    # thread1.start()
     move_maker_thr = threading.Thread(target=move_maker_thread, args=(game,))
     move_maker_thr.start()
 
@@ -104,15 +121,229 @@ def potential_moves(game: Game, player: Player):
     return moves
 
 
-BIG_LOSS = -1000000
-BIG_GAIN = 1000000
-NORMAL_GAIN = 100
-SMALL_GAIN = 1
-
 
 import numpy as np
 
-def evaluate(game: Game, last_move, player):
+def get_kern_col_idx(pos: Tuple[int,int], direction: int = 1, length: int = 5):     # si dir = 1 alors vers le bas | si dir = -1 alors vers le haut
+    return pos[0] * np.ones(length, dtype = 'int8'), np.arange(pos[1], pos[1] + direction * length, direction)
+
+def get_kern_row_idx(pos: Tuple[int,int], direction: int = 1, length: int = 5):     # si dir = 1 alors vers le droite | si dir = -1 alors vers la gauche
+    return np.arange(pos[0], pos[0] + direction * length, direction), [pos[1]] * np.ones(length, dtype = 'int8')
+
+def get_kern_diag_idx(pos: Tuple[int, int], slope: Tuple[int, int] = 1, length: int = 5):     # si slope = (1, 1) alors vers le bas droite | si dir = (-1, -1) alors vers le haut gauche | si dir = (-1, 1) alors vers le bas gauche | si dir = (1, -1) alors vers le haut droite
+    return np.arange(pos[0], pos[0] + slope[0] * length, slope[0]), np.arange(pos[1], pos[1] + slope[1] * length, slope[1])
+
+def kern_trad(board, kern_idx) -> np.array:
+    coords = np.column_stack(kern_idx)
+    return board[coords[:, 1], coords[:, 0]]
+
+
+def find_longest_row(board, last_move: Tuple[int, int]):
+    longest = {
+        1: [1],
+        -1: [1],
+    }
+    player = board[last_move[1], last_move[0]]
+    # print("last_move", last_move)
+    for dir in [1, -1]:
+        for length in range(2, 6):
+            values = kern_trad(board, get_kern_row_idx(last_move, direction=dir, length=length))
+            number_player = np.count_nonzero(values == player)
+            # print(get_kern_row_idx(last_move, direction=dir, length=length))
+            # print("dir", dir, "values", values)
+
+            longest[dir].append(number_player)
+
+            if number_player < length:
+                break
+
+    return max(longest[1]) + max(longest[-1]) - 1
+
+def find_longest_col(board, last_move: Tuple[int, int]):
+    longest = {
+        1: [1],
+        -1: [1],
+    }
+    player = board[last_move[1], last_move[0]]
+    for dir in [1, -1]:
+        for length in range(2, 6):
+            values = kern_trad(board, get_kern_col_idx(last_move, direction=dir, length=length))
+            number_player = np.count_nonzero(values == player)
+
+            longest[dir].append(number_player)
+
+            if number_player < length:
+                break
+
+    return max(longest[1]) + max(longest[-1]) - 1
+
+def find_longest_diag(board, last_move: Tuple[int, int]):
+    longest = {
+        1: [1],    # diag bas gauche vers haut droit
+        -1: [1],   # inverse
+    }
+    player = board[last_move[1], last_move[0]]
+
+    flipped_board = np.fliplr(board)
+    flipped_move = (19 - last_move[0] + 4, last_move[1])
+    for right in [True, False]:
+        for up in [1, -1]:
+            for length in range(2, 6):
+                if right:
+                    values = kern_trad(board, get_kern_diag_idx(last_move, slope=[1, up], length=length))
+                else:
+                    values = kern_trad(flipped_board, get_kern_diag_idx(flipped_move, slope=[1, -up], length=length))
+                number_player = np.count_nonzero(values == player)
+
+                longest[up].append(number_player)
+
+                if number_player < length:
+                    break
+
+    return max(longest[1]) + max(longest[-1]) - 1
+
+def find_longest(board, last_move: Tuple[int, int]):
+    player = board[last_move[1], last_move[0]]
+    longest = [1]
+
+
+    longest.append(find_longest_row(board, last_move))
+    longest.append(find_longest_col(board, last_move))
+    longest.append(find_longest_diag(board, last_move))
+
+    return max(longest)
+
+def find_longest_opponent_row(board, last_move: Tuple[int, int]):
+    longest = {
+        1: [0],
+        -1: [0],
+    }
+    player = board[last_move[1], last_move[0]]
+    opponent = 3 - player
+    for dir in [1, -1]:
+        for length in range(1, 5):
+            values = kern_trad(board, get_kern_row_idx([last_move[0] + dir, last_move[1]], direction=dir, length=length))
+            number_player = np.count_nonzero(values == opponent)
+
+            longest[dir].append(number_player)
+
+            if number_player < length:
+                break
+
+    return max(longest[1]) + max(longest[-1])
+
+def find_longest_opponent_col(board, last_move: Tuple[int, int]):
+    longest = {
+        1: [0],
+        -1: [0],
+    }
+    player = board[last_move[1], last_move[0]]
+    opponent = 3 - player
+    for dir in [1, -1]:
+        for length in range(1, 5):
+            values = kern_trad(board, get_kern_col_idx([last_move[0], last_move[1] + dir], direction=dir, length=length))
+            number_player = np.count_nonzero(values == opponent)
+
+            longest[dir].append(number_player)
+
+            if number_player < length:
+                break
+
+    return max(longest[1]) + max(longest[-1])
+
+
+def find_longest_opponent_diag(board, last_move: Tuple[int, int]):
+    longest = {
+        1: [0],    # diag bas gauche vers haut droit
+        -1: [0],   # inverse
+    }
+    player = board[last_move[1], last_move[0]]
+    opponent = 3 - player
+
+    flipped_board = np.fliplr(board)
+    flipped_move = (19 - last_move[0] + 4, last_move[1])
+    for right in [True, False]:
+        for up in [1, -1]:
+            for length in range(1, 5):
+                if right:
+                    values = kern_trad(board, get_kern_diag_idx([last_move[0] + 1, last_move[1] + up], slope=[1, up], length=length))
+                else:
+                    values = kern_trad(flipped_board, get_kern_diag_idx([flipped_move[0] + 1, flipped_move[1] - up], slope=[1, -up], length=length))
+                number_player = np.count_nonzero(values == opponent)
+
+                longest[up].append(number_player)
+
+                if number_player < length:
+                    break
+
+    return max(longest[1]) + max(longest[-1])
+
+
+def find_longest_opponent(board, last_move: Tuple[int, int]):
+    player = board[last_move[1], last_move[0]]
+    longest = [1]
+
+
+    longest.append(find_longest_opponent_row(board, last_move))
+    longest.append(find_longest_opponent_col(board, last_move))
+    longest.append(find_longest_opponent_diag(board, last_move))
+
+    return max(longest)
+
+def detect_captures(board, last_move):
+    player = board[last_move[1], last_move[0]]
+    opponent = 3 - player
+    board_shape = board.shape
+    pattern = np.array([player, opponent, opponent, player])
+
+    directions = [
+        (get_kern_row_idx, (1, 0)),
+        (get_kern_col_idx, (0, 1)),
+        (get_kern_diag_idx, (1, 1)),
+        (get_kern_diag_idx, (1, -1)),
+    ]
+
+    for get_idx, (dx, dy) in directions:
+        for sign in [1, -1]:
+            for offset in [0, -3]:
+                start_x = last_move[0] + offset * dx * sign
+                start_y = last_move[1] + offset * dy * sign
+
+                if get_idx is get_kern_diag_idx:
+                    slope = (dx, dy * sign)
+                    x_idx, y_idx = get_idx((start_x, start_y), slope=slope, length=4)
+                else:
+                    x_idx, y_idx = get_idx((start_x, start_y), direction=sign, length=4)
+
+                if (np.any(x_idx < 0) or np.any(x_idx >= board_shape[1]) or
+                    np.any(y_idx < 0) or np.any(y_idx >= board_shape[0])):
+                    continue
+
+                window = kern_trad(board, (x_idx, y_idx))
+
+                if np.array_equal(window, pattern):
+                    for pos in [0, 3]:
+                        if x_idx[pos] == last_move[0] and y_idx[pos] == last_move[1]:
+                            return True
+    return False
+
+
+def check_neighbor(board, last_move):
+    mid_col = kern_trad(board, get_kern_col_idx(np.add(last_move, (0, -1)), length=3))
+    mid_row = kern_trad(board, get_kern_row_idx(np.add(last_move, (-1, 0)), length=3))
+
+    player = mid_col[1]
+
+    values = [mid_col[0], mid_col[2], mid_row[0], mid_row[2]]
+
+    return values.count(player)
+
+ 
+
+def evaluate(game: Game, last_move: Tuple[int, int], player):
+
+    print(f"evaluate: [{last_move[0]}, {last_move[1]}]")
+
     val = 0
     board = game.board.board  # np.ndarray 2D
     player_value = player.value
@@ -120,61 +351,52 @@ def evaluate(game: Game, last_move, player):
     rows, cols = board.shape
     x, y = last_move  # (colonne, ligne)
 
-    directions = [
-        (1, 0),   # horizontal →
-        (0, 1),   # vertical ↓
-        (1, 1),   # diagonale ↘
-        (1, -1),  # diagonale ↗
-    ]
+    directions = [1,-1]
 
-    for dx, dy in directions:
-        count = 1  # pion placé
+    board = np.pad(game.board.board, ((0, 5), (0, 5)), mode='constant')
 
-        nx, ny = x + dx, y + dy
-        while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
-            count += 1
-            nx += dx
-            ny += dy
+    longest = find_longest(board, last_move)
+    longest_opponent = find_longest_opponent(board, last_move)
 
-        nx, ny = x - dx, y - dy
-        while 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == player_value:
-            count += 1
-            nx -= dx
-            ny -= dy
+    if longest == 2:
+        print("longest 2")
+        val += SMALL_GAIN
+    elif longest == 3:
+        print("longest 3")
+        val += 3 * NORMAL_GAIN
+    elif longest == 4:
+        print("longest 4")
+        val += 6 * NORMAL_GAIN
+    elif longest == 5:
+        print("longest 5")
+        val += BIG_GAIN
 
-        if count >= 5:
-            val += BIG_GAIN
-        elif count == 4:
-            val += 3 * NORMAL_GAIN
-        elif count == 3:
-            val += 2 * NORMAL_GAIN
-        elif count == 2:
-            val += NORMAL_GAIN
+    if longest_opponent == 2:
+        print("longest opponent 2")
+        val += SMALL_GAIN
+    elif longest_opponent == 3:
+        print("longest opponent 3")
+        val += 4 * NORMAL_GAIN
+    elif longest_opponent >= 4:
+        print("longest opponent 4")
+        val += BIG_GAIN
 
-        for sign in [1, -1]:
-            cx, cy = x + sign * dx, y + sign * dy
-            cx2, cy2 = x + sign * 2 * dx, y + sign * 2 * dy
-            cx3, cy3 = x + sign * 3 * dx, y + sign * 3 * dy
+    if detect_captures(board, last_move):
+        print("capture detected")
+        val += 10 * SMALL_GAIN + NORMAL_GAIN * player.capture_score
 
-            if (
-                0 <= cy3 < rows and 0 <= cx3 < cols
-                and board[cy, cx] == opponent_value
-                and board[cy2, cx2] == opponent_value
-                and board[cy3, cx3] == player_value
-            ):
-                val += NORMAL_GAIN * 2 + NORMAL_GAIN * player.capture_score if player.capture_score != 9 else BIG_GAIN
+    val += check_neighbor(board, last_move)
+
+    print(val)
 
     return val
-
-
 
 def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, last_move):
     opponent = game.get_opponent(player.value)
     if not depth or game.board.is_winner_moove(
-        player, last_move[0], last_move[1], game
+        opponent, last_move[0], last_move[1], game
     ):
-        # return evaluate(game, player)
-        return evaluate(game, last_move, player)
+        return evaluate(game, last_move, opponent)
 
     moves = potential_moves(game, player)
 
@@ -219,6 +441,19 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
 
         for move in moves:
             new_state = game.copy()
+
+            is_capture, new_board, score = new_state.board.check_is_capture_moove(
+                new_state,
+                player,
+                new_state.get_opponent(player.value).value,
+                move[0],
+                move[1],
+            )
+
+            if is_capture:
+                new_state.board.update_board(new_board)
+                new_state.get_player(player.value).capture_score += score
+                
             new_state.board.board[move[1]][move[0]] = player.value
             eval_value = minmax(
                 new_state,
@@ -236,7 +471,6 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
             if beta <= alpha:
                 break
         return minEval
-
 
 def move_maker_thread(game: Game):
     last_turn = game.P1.name
@@ -301,9 +535,6 @@ def move_maker_thread(game: Game):
 
                 print("AI Played move calculated on the fly")
 
-
-DEPTH_MAX = 1
-NUMBER_BEST_MOVES = 4
 
 
 def thread_opponent(game: Game):
@@ -371,7 +602,7 @@ def thread_AI(game: Game, move_manager: HumanMoveManager):
         new_state.board.board[move[1], move[0]] = game.P2.value
         # print(game.P1.name)
         score = minmax(
-            new_state, DEPTH_MAX - 1, -10000000000, 10000000000, True, game.P1, move
+            new_state, DEPTH_MAX - 1, -10000000000, 10000000000, True, game.P2, move
         )
         best_scores.append({"score": score, "move": move})
         # game.board.play_moove(game, move[0], move[1])
