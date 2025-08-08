@@ -585,7 +585,6 @@ def thread_opponent(game: Game):
 
 
 def thread_AI(game: Game, move_manager: HumanMoveManager):
-
     start_time = time.time()
     state = game.copy()
     state.board.board[move_manager.move[1], move_manager.move[0]] = game.P1.value

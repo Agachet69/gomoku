@@ -9,7 +9,7 @@ class Player:
         self.last_moves = []
     
     def deep_copy(self):
-        copied_player = Player(self.img_path, self.name, self.value)
+        copied_player = Player(self.img_path, self.img_hover, self.name, self.value)
         copied_player.mooves = self.mooves
         copied_player.capture_score = self.capture_score
         return copied_player
