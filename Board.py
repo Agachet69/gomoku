@@ -77,6 +77,50 @@ class Board:
 
         return False
 
+    def check_is_capture_moove(self, game: Game, player, my_opponent, x, y):
+        directions = [
+            (1, 0),
+            (0, 1),
+            (1, 1),
+            (1, -1),
+            (-1, 0),
+            (0, -1),
+            (-1, -1),
+            (-1, 1),
+        ]
+        new_board = game.board.board.copy()
+        is_capture = False
+        score = 0
+
+        for dy, dx in directions:
+            stones = 0
+            pos_y, pos_x = y + dy, x + dx
+            while (
+                self.is_on_board(pos_x, pos_y)
+                and self.board[pos_y, pos_x] == my_opponent
+            ):
+                stones += 1
+                pos_y += dy
+                pos_x += dx
+
+            if (
+                self.is_on_board(pos_x, pos_y)
+                and stones == 2
+                and self.board[pos_y, pos_x] == player.value
+            ):
+                pos_y -= dy
+                pos_x -= dx
+                if not self.is_on_board(pos_x, pos_y):
+                    continue
+                score += 2
+                is_capture = True
+                # player.capture_score += 2
+                new_board[pos_y, pos_x] = 0
+                new_board[pos_y - dy, pos_x - dx] = 0
+                # print(f"{player.value} score : {player.capture_score}")
+        # self.update_board(new_board)
+        return (is_capture, new_board, score)
+
     def is_double_three(self, x, y, game: Game):
         player_value = game.get_me_value()
         board = game.board.board.copy()
@@ -119,12 +163,6 @@ class Board:
         self.temp_stoney = y
 
     def is_capture(self, board, move, player):
-        """
-        Vérifie si le mouvement 'move' (tuple (x, y)) du joueur 'player'
-        capture 2 pierres adverses sur le plateau 'board' (np.ndarray 19x19
-        d'entiers 0, 1 ou 2). Retourne une liste des positions capturées,
-        ou [] si aucune capture.
-        """
         x, y = move
         opp = 2 if player == 1 else 1
         captures = []
@@ -135,12 +173,10 @@ class Board:
             ((1, -1), (-1, 1)),
         ]
         for dir1, dir2 in directions:
-            # Cherche motif adversaire-adversaire dans chaque direction à partir du coup
             for dx, dy in [(dir1[0], dir1[1]), (dir2[0], dir2[1])]:
                 nx1, ny1 = x + dx, y + dy
                 nx2, ny2 = x + 2 * dx, y + 2 * dy
                 nx3, ny3 = x + 3 * dx, y + 3 * dy
-                # Vérifie la séquence [player, opp, opp, player] (le coup vient d’être joué à x,y)
                 if 0 <= nx3 < BOARD_SIZE and 0 <= ny3 < BOARD_SIZE:
                     if (
                         board[ny1, nx1] == opp
@@ -148,7 +184,6 @@ class Board:
                         and board[ny3, nx3] == player
                     ):
                         captures.extend([(nx1, ny1), (nx2, ny2)])
-        # Ne retourne que les pierres uniques capturées (set)
         return list(set(captures))
 
     def remove_captured_stones(self, board, captured, game):
@@ -349,19 +384,24 @@ class Board:
                 self.human_best_moves = []
             opponent = game.get_opponent(my_player.value)
             captured = self.is_capture(self.board, (x, y), my_player.value)
-            self.remove_captured_stones(self.board, captured, game)
-            if game.game_state == GameState.LastChance:
-                game.winner = opponent
-                game.game_state = GameState.Finish
             stones_captured = len(captured)
-            my_player.capture_score += stones_captured
-
             if stones_captured == 0 and self.detect_double_three_anywhere(
                 my_player.value, x, y
             ):
                 # self.is_double_three(x, y, game):
                 print("Illegal moove double three.")
                 return
+            if stones_captured > 0:
+                self.remove_captured_stones(self.board, captured, game)
+                my_player.capture_score += stones_captured
+            if game.game_state == GameState.LastChance:
+                game.winner = opponent
+                game.game_state = GameState.Finish
+            elif game.game_state == GameState.Playing and my_player.capture_score >= 10:
+                game.winner = my_player
+                game.game_state = GameState.Finish
+                
+                
 
             game.has_played()
             self.board[y, x] = my_player.value
