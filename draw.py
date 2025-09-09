@@ -21,6 +21,7 @@ from config import (
     RED,
 )
 
+
 def draw_text(screen, text, font, x, y):
     label = font.render(text, True, BLACK)
     rect = label.get_rect(center=(x, y))
@@ -29,44 +30,42 @@ def draw_text(screen, text, font, x, y):
 
 
 def get_mode(event, game, ia, simple, futur):
-        if ia.collidepoint(event.pos) or simple.collidepoint(event.pos):
-            img_black = pygame.image.load("./assets/black.png").convert_alpha()
-            img_white = pygame.image.load("./assets/white.png").convert_alpha()
-            black = pygame.transform.smoothscale(img_black, (CELL_SIZE, CELL_SIZE))
-            white = pygame.transform.smoothscale(img_white, (CELL_SIZE, CELL_SIZE))
-            black_hover = black.copy()
-            black_hover.set_alpha(128)
-            white_hover = white.copy()
-            white_hover.set_alpha(128)
-            P1 = Player(black, black_hover, "Black", 1)
-            P2 = Player(white, white_hover, "White", 2)
-            game.set_players(P1, P2)
-            game.game_state = GameState.Playing
-            print("→ Lancement du jeu") 
-            if ia.collidepoint(event.pos):
-                game.type = GameType.AI
-                init_threads(game)
-            else:
-                game.type = GameType.PvP
-        
+    if ia.collidepoint(event.pos) or simple.collidepoint(event.pos):
+        img_black = pygame.image.load("./assets/black.png").convert_alpha()
+        img_white = pygame.image.load("./assets/white.png").convert_alpha()
+        black = pygame.transform.smoothscale(img_black, (CELL_SIZE, CELL_SIZE))
+        white = pygame.transform.smoothscale(img_white, (CELL_SIZE, CELL_SIZE))
+        black_hover = black.copy()
+        black_hover.set_alpha(128)
+        white_hover = white.copy()
+        white_hover.set_alpha(128)
+        P1 = Player(black, black_hover, "Black", 1)
+        P2 = Player(white, white_hover, "White", 2)
+        game.set_players(P1, P2)
+        game.game_state = GameState.Playing
+        print("→ Lancement du jeu")
+        if ia.collidepoint(event.pos):
+            game.type = GameType.AI
+            init_threads(game)
+        else:
+            game.type = GameType.PvP
 
-
-        elif futur.collidepoint(event.pos):
-            img_marseille = pygame.image.load("./assets/marseille.png").convert_alpha()
-            img_psg = pygame.image.load("./assets/psg.png").convert_alpha()
-            marseille = pygame.transform.smoothscale(
-                img_marseille, (CELL_SIZE, CELL_SIZE)
-            )
-            psg = pygame.transform.smoothscale(img_psg, (CELL_SIZE, CELL_SIZE))
-            marseille_hover = marseille.copy()
-            marseille_hover.set_alpha(128)
-            psg_hover = psg.copy()
-            psg_hover.set_alpha(128)
-            P1 = Player(marseille, marseille_hover, "Marseille", 1)
-            P2 = Player(psg, psg_hover, "PSG", 2)
-            game.set_players(P1, P2)
-            game.game_state = GameState.Playing
-            print("→ Avenir en lecture..")
+    elif futur.collidepoint(event.pos):
+        img_marseille = pygame.image.load("./assets/marseille.png").convert_alpha()
+        img_psg = pygame.image.load("./assets/psg.png").convert_alpha()
+        marseille = pygame.transform.smoothscale(img_marseille, (CELL_SIZE, CELL_SIZE))
+        psg = pygame.transform.smoothscale(img_psg, (CELL_SIZE, CELL_SIZE))
+        marseille_hover = marseille.copy()
+        marseille_hover.set_alpha(128)
+        psg_hover = psg.copy()
+        psg_hover.set_alpha(128)
+        P1 = Player(marseille, marseille_hover, "Marseille", 1)
+        P2 = Player(psg, psg_hover, "PSG", 2)
+        game.set_players(P1, P2)
+        game.game_state = GameState.Playing
+        game.type = GameType.FUTURE
+        print("→ Avenir en lecture..")
+        init_threads(game)
 
 
 def draw_menu_screen(screen, fonts, game: Game, event):
@@ -76,8 +75,7 @@ def draw_menu_screen(screen, fonts, game: Game, event):
     box_width, box_height = 500, 300
     box_rect = pygame.Rect(0, 0, box_width, box_height)
     box_rect.center = screen_rect.center
-    
-    
+
     draw_text(
         screen,
         "Bienvenue sur Gomoku",
@@ -93,7 +91,7 @@ def draw_menu_screen(screen, fonts, game: Game, event):
     first_choice = fonts["font"].render("1. Play with AI", True, BLACK)
     second_choice = fonts["font"].render("2. Play with friend", True, BLACK)
     third_choice = fonts["font"].render("3. Prevoir l'avenir", True, BLACK)
-    
+
     first_choice_rect = first_choice.get_rect(
         center=(box_rect.left + first_choice.get_width() / 2 + 80, box_rect.top + 130)
     )
@@ -104,13 +102,11 @@ def draw_menu_screen(screen, fonts, game: Game, event):
         center=(box_rect.left + third_choice.get_width() / 2 + 80, box_rect.top + 230)
     )
 
-
     pygame.draw.rect(screen, WHITE, box_rect, border_radius=15)
     screen.blit(text_surface, text_rect)
     screen.blit(first_choice, first_choice_rect)
     screen.blit(second_choice, second_choice_rect)
     screen.blit(third_choice, third_choice_rect)
-
 
     pygame.display.flip()
 
@@ -146,10 +142,10 @@ def draw_finish_modal(screen, game: Game, fonts, event):
 
     menu_rect = pygame.Rect(0, 0, button_width, button_height)
     menu_rect.center = (box_width // 2, 230)
-    
+
     is_hover = box_rect.collidepoint(event.pos)
     bg_color = WHITE if is_hover else WHITE_TRANSPARENT
-    
+
     pygame.draw.rect(
         modal_surface, bg_color, modal_surface.get_rect(), border_radius=15
     )
@@ -169,6 +165,7 @@ def draw_finish_modal(screen, game: Game, fonts, event):
             game.replay()
         elif abs_menu_rect.collidepoint(event.pos):
             game.menu()
+
 
 def draw_temporary_stone(x, y, screen, player):
     px = (WINDOW_SIZE - GAME_SIZE) / 2 + x * CELL_SIZE
@@ -298,30 +295,32 @@ def draw_team_side(screen, fonts, game):
 
 def draw_arrow(screen, color, x, y, orientation, width=30, height=25):
     """
-    Dessine une flèche pointant soit vers 
+    Dessine une flèche pointant soit vers
     la droite soit vers la gauche.
     """
     half_height = height // 2
     if orientation == "right":
-        points =    [
-            (x, y - half_height),       # coin haut gauche
-            (x + width, y),             # pointe droite
-            (x, y + half_height),       # coin bas gauche
+        points = [
+            (x, y - half_height),  # coin haut gauche
+            (x + width, y),  # pointe droite
+            (x, y + half_height),  # coin bas gauche
         ]
     else:
         points = [
-            (x, y),                     # pointe gauche
+            (x, y),  # pointe gauche
             (x + width, y - half_height),  # coin haut droit
             (x + width, y + half_height),  # coin bas droit
-        ]   
+        ]
 
     pygame.gfxdraw.filled_polygon(screen, points, color)
     pygame.gfxdraw.aapolygon(screen, points, color)
 
-    arrow_rect = pygame.Rect(min(p[0] for p in points),
-                             min(p[1] for p in points),
-                             max(p[0] for p in points) - min(p[0] for p in points),
-                             max(p[1] for p in points) - min(p[1] for p in points))
+    arrow_rect = pygame.Rect(
+        min(p[0] for p in points),
+        min(p[1] for p in points),
+        max(p[0] for p in points) - min(p[0] for p in points),
+        max(p[1] for p in points) - min(p[1] for p in points),
+    )
 
     return arrow_rect
 
@@ -329,10 +328,22 @@ def draw_arrow(screen, color, x, y, orientation, width=30, height=25):
 def draw_historic_arrows(screen, fonts, game: Game, event):
     screen_rect = screen.get_rect()
 
-    left_rect = draw_arrow(screen, BLACK if game.step_historic > 0 else GRAY_ARROW, screen_rect.centerx - 90, screen_rect.height - 105, 'left')
-    right_rect = draw_arrow(screen, BLACK if game.step_historic < len(game.historic) - 1 else GRAY_ARROW, screen_rect.centerx + 90, screen_rect.height - 105, 'right')
+    left_rect = draw_arrow(
+        screen,
+        BLACK if game.step_historic > 0 else GRAY_ARROW,
+        screen_rect.centerx - 90,
+        screen_rect.height - 105,
+        "left",
+    )
+    right_rect = draw_arrow(
+        screen,
+        BLACK if game.step_historic < len(game.historic) - 1 else GRAY_ARROW,
+        screen_rect.centerx + 90,
+        screen_rect.height - 105,
+        "right",
+    )
 
-    if hasattr(event, 'pos'):
+    if hasattr(event, "pos"):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if left_rect.collidepoint(event.pos):
                 game.get_back_historic()
@@ -340,12 +351,7 @@ def draw_historic_arrows(screen, fonts, game: Game, event):
                 game.get_front_historic()
 
 
-def draw_game(
-    screen,
-    fonts,
-    game: Game,
-    event
-):
+def draw_game(screen, fonts, game: Game, event):
     draw_board(screen, fonts, game)
     draw_title(screen, fonts)
     draw_turn(screen, fonts, game)

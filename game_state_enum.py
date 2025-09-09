@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class GameState(Enum):
     Creating = 0
     Playing = 1
@@ -7,6 +8,8 @@ class GameState(Enum):
     Draw = 3
     LastChance = 4
 
+
 class GameType(Enum):
     AI = 0
     PvP = 1
+    FUTURE = 2
