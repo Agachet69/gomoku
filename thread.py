@@ -5,7 +5,7 @@ from typing import Literal, Tuple
 import pygame
 from Board import Board, HumanMoveManager
 from game import Game
-from game_state_enum import GameState
+from game_state_enum import GameState, GameType
 import threading
 import time
 import numpy as np
@@ -116,9 +116,6 @@ def potential_moves(game: Game, player: Player):
                         continue
                 moves.add((nx, ny))
     return moves
-
-
-import numpy as np
 
 
 def get_kern_col_idx(
@@ -527,23 +524,35 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
 
 
 def move_maker_thread(game: Game):
-    last_turn = game.P1.name
+    # last_turn = game.P1.name
     while game.program_run and game.game_state != GameState.Finish:
-        if game.player_turn == game.P1.value:
-            last_turn = game.P1.name
-            time.sleep(0.1)
-            continue
+        if game.type != GameType.FUTURE:
+            if game.player_turn == game.P1.value:
+                # last_turn = game.P1.name
+                time.sleep(0.1)
+                continue
 
-        if last_turn == game.P1.name:
-            last_turn = game.P2.name
-            last_move = game.P1.last_moves[0]
-            rows, cols = game.board.board.shape
+        player_value = game.get_player_value()
+        player = game.get_player(player_value)
+        opponent = game.get_opponent(player_value)
+        # if last_turn == game.P1.name:
+        #     last_turn = game.P2.name
+        # last_move = game.P1.last_moves[0]
+        last_move = None
+        if len(opponent.last_moves) > 0:
+            last_move = opponent.last_moves[0]
+        rows, cols = game.board.board.shape
 
-            print("Human had moved")
+        print("Human had moved")
 
-            if not np.any(game.board.board == 2):
-                direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
+        if not np.any(game.board.board == player_value):
+            direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
 
+            if last_move is None:
+                game.board.play_moove(
+                    game, random.randint(0, 18), random.randint(0, 18)
+                )
+            else:
                 while not (
                     game.board.is_on_board(
                         last_move[1] + direction[1], last_move[0] + direction[0]
@@ -557,38 +566,34 @@ def move_maker_thread(game: Game):
                     game, last_move[0] + direction[0], last_move[1] + direction[1]
                 )
 
-                print("AI Played randomly")
+            print("AI Played randomly")
 
-            elif move_calculated := next(
-                (
-                    move
-                    for move in game.board.human_best_moves
-                    if move.move == last_move
-                ),
-                None,
-            ):
-                while move_calculated.running:
-                    time.sleep(0.01)
-                    pass
+        elif move_calculated := next(
+            (move for move in game.board.human_best_moves if move.move == last_move),
+            None,
+        ):
+            while move_calculated.running:
+                time.sleep(0.01)
+                pass
 
-                game.board.play_moove(
-                    game, move_calculated.move_to_do[0], move_calculated.move_to_do[1]
-                )
-                print("AI Played move already calculated")
-            else:
-                print("Start calculated next move.")
-                move_manager = HumanMoveManager(last_move)
+            game.board.play_moove(
+                game, move_calculated.move_to_do[0], move_calculated.move_to_do[1]
+            )
+            print("AI Played move already calculated")
+        else:
+            print("Start calculated next move.")
+            move_manager = HumanMoveManager(last_move)
 
-                executor.submit(thread_AI, game, move_manager)
+            executor.submit(thread_AI, game, move_manager, player, opponent)
 
-                while move_manager.running:
-                    # print("oui")
-                    time.sleep(0.01)
-                game.board.play_moove(
-                    game, move_manager.move_to_do[0], move_manager.move_to_do[1]
-                )
+            while move_manager.running:
+                # print("oui")
+                time.sleep(0.01)
+            game.board.play_moove(
+                game, move_manager.move_to_do[0], move_manager.move_to_do[1]
+            )
 
-                print("AI Played move calculated on the fly")
+            print("AI Played move calculated on the fly")
 
 
 def thread_opponent(game: Game):
@@ -638,13 +643,15 @@ def thread_opponent(game: Game):
         # print(f"Temps total de l'itération : {elapsed:.3f} secondes")
 
 
-def thread_AI(game: Game, move_manager: HumanMoveManager):
+def thread_AI(
+    game: Game, move_manager: HumanMoveManager, player: Player, opponent: Player
+):
     start_time = time.time()
     state = game.copy()
-    state.board.board[move_manager.move[1], move_manager.move[0]] = game.P1.value
+    state.board.board[move_manager.move[1], move_manager.move[0]] = opponent.value
 
     best_scores = []
-    moves = potential_moves(state, game.P2)
+    moves = potential_moves(state, player)
 
     max_score = float("-inf")
 
@@ -652,10 +659,10 @@ def thread_AI(game: Game, move_manager: HumanMoveManager):
         # if game.player_turn == 2:
         #     return
         new_state = state.copy()
-        new_state.board.board[move[1], move[0]] = game.P2.value
+        new_state.board.board[move[1], move[0]] = player.value
         # print(game.P1.name)
         score = minmax(
-            new_state, DEPTH_MAX - 1, -10000000000, 10000000000, True, game.P2, move
+            new_state, DEPTH_MAX - 1, -10000000000, 10000000000, True, player, move
         )
         best_scores.append({"score": score, "move": move})
         # game.board.play_moove(game, move[0], move[1])

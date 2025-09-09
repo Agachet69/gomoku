@@ -143,7 +143,9 @@ def draw_finish_modal(screen, game: Game, fonts, event):
     menu_rect = pygame.Rect(0, 0, button_width, button_height)
     menu_rect.center = (box_width // 2, 230)
 
-    is_hover = box_rect.collidepoint(event.pos)
+    is_hover = None
+    if hasattr(event, "pos"):
+        is_hover = box_rect.collidepoint(event.pos)
     bg_color = WHITE if is_hover else WHITE_TRANSPARENT
 
     pygame.draw.rect(

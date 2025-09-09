@@ -17,6 +17,7 @@ class Game:
         self.historic = []
         self.step_historic = 0
         self.last_chance_capture = None
+        self.type = None
 
     def set_players(self, P1: Player, P2: Player):
         self.board = Board()
