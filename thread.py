@@ -249,7 +249,6 @@ def find_longest(board, last_move: Tuple[int, int]):
     longest.append(find_longest_row(board, last_move))
     longest.append(find_longest_col(board, last_move))
     longest.append(find_longest_diag(board, last_move))
-    print("test")
 
     return max(longest, key=lambda x: x["longest"])
 
@@ -638,6 +637,7 @@ def move_maker_thread(game: Game):
             )
 
             print("AI Played move calculated on the fly")
+        time.sleep(2.1)
 
 
 def thread_opponent(game: Game):

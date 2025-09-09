@@ -79,11 +79,11 @@ def init_game():
                 if hasattr(event, "pos"):
                     draw_game(screen, fonts, game, event)
                     draw_finish_modal(screen, game, fonts, event)
-        # if (
-        #     game.game_state == GameState.Playing
-        #     or game.game_state == GameState.LastChance
-        # ):
-        #     draw_game(screen, fonts, game, event)
+        if (
+            game.game_state == GameState.Playing
+            or game.game_state == GameState.LastChance
+        ):
+            draw_game(screen, fonts, game, event)
         # elif game.game_state == GameState.Finish or game.game_state == GameState.Draw:
         #     draw_finish_modal(screen, game, fonts, event)
         pygame.display.flip()
