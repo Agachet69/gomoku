@@ -144,6 +144,8 @@ def find_longest_row(board, last_move: Tuple[int, int]):
         -1: [1],
     }
     player = board[last_move[1], last_move[0]]
+    opponent = 3 - player
+    blocked = 0
     # print("last_move", last_move)
     for dir in [1, -1]:
         for length in range(2, 6):
@@ -155,9 +157,11 @@ def find_longest_row(board, last_move: Tuple[int, int]):
             longest[dir].append(number_player)
 
             if number_player < length:
+                if values[-1] == opponent:
+                    blocked += 1
                 break
 
-    return max(longest[1]) + max(longest[-1]) - 1
+    return {"longest": max(longest[1]) + max(longest[-1]) - 1, "blocked": blocked}
 
 def find_longest_col(board, last_move: Tuple[int, int]):
     longest = {
@@ -165,6 +169,8 @@ def find_longest_col(board, last_move: Tuple[int, int]):
         -1: [1],
     }
     player = board[last_move[1], last_move[0]]
+    opponent = 3 - player
+    blocked = 0
     for dir in [1, -1]:
         for length in range(2, 6):
             values = kern_trad(board, get_kern_col_idx(last_move, direction=dir, length=length))
@@ -173,45 +179,60 @@ def find_longest_col(board, last_move: Tuple[int, int]):
             longest[dir].append(number_player)
 
             if number_player < length:
+                if values[-1] == opponent:
+                    blocked += 1
                 break
 
-    return max(longest[1]) + max(longest[-1]) - 1
+    return {"longest": max(longest[1]) + max(longest[-1]) - 1, "blocked": blocked}
 
-def find_longest_diag(board, last_move: Tuple[int, int]):
+def find_longest_diag(board, last_move):
     longest = {
-        1: [1],    # diag bas gauche vers haut droit
-        -1: [1],   # inverse
+        True: {
+            1: [1],
+            -1: [1]
+        },
+        False: {
+            1: [1],
+            -1: [1]
+        },
     }
     player = board[last_move[1], last_move[0]]
+    opponent = 3 - player
+    blocked = 0
 
     flipped_board = np.fliplr(board)
-    flipped_move = (19 - last_move[0] + 4, last_move[1])
+    flipped_move = (19 - last_move[0]  + 4, last_move[1])
     for right in [True, False]:
-        for up in [1, -1]:
+        for down in [1, -1]:
             for length in range(2, 6):
                 if right:
-                    values = kern_trad(board, get_kern_diag_idx(last_move, slope=[1, up], length=length))
+                    values = kern_trad(board, get_kern_diag_idx(last_move, slope=[1, down], length=length))
+                    print(get_kern_diag_idx(last_move, slope=[1, down], length=length))
                 else:
-                    values = kern_trad(flipped_board, get_kern_diag_idx(flipped_move, slope=[1, -up], length=length))
+                    values = kern_trad(flipped_board, get_kern_diag_idx(flipped_move, slope=[1, down], length=length))
+                    print(get_kern_diag_idx(flipped_move, slope=[1, down], length=length))
+                print(values)  
                 number_player = np.count_nonzero(values == player)
 
-                longest[up].append(number_player)
+                longest[right][down].append(number_player)
 
                 if number_player < length:
+                    if values[-1] == opponent:
+                        blocked += 1
                     break
 
-    return max(longest[1]) + max(longest[-1]) - 1
+    return {"longest": max(max(longest[True][1]) + max(longest[False][-1]), max(longest[False][1]) + max(longest[True][-1])) - 1, "blocked": blocked}
 
 def find_longest(board, last_move: Tuple[int, int]):
-    player = board[last_move[1], last_move[0]]
-    longest = [1]
+    longest = []
 
 
     longest.append(find_longest_row(board, last_move))
     longest.append(find_longest_col(board, last_move))
     longest.append(find_longest_diag(board, last_move))
+    print("test")
 
-    return max(longest)
+    return max(longest, key=lambda x: x["longest"])
 
 def find_longest_opponent_row(board, last_move: Tuple[int, int]):
     longest = {
@@ -251,11 +272,16 @@ def find_longest_opponent_col(board, last_move: Tuple[int, int]):
 
     return max(longest[1]) + max(longest[-1])
 
-
 def find_longest_opponent_diag(board, last_move: Tuple[int, int]):
     longest = {
-        1: [0],    # diag bas gauche vers haut droit
-        -1: [0],   # inverse
+        True: {
+            1: [1],
+            -1: [1]
+        },
+        False: {
+            1: [1],
+            -1: [1]
+        },
     }
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
@@ -263,20 +289,20 @@ def find_longest_opponent_diag(board, last_move: Tuple[int, int]):
     flipped_board = np.fliplr(board)
     flipped_move = (19 - last_move[0] + 4, last_move[1])
     for right in [True, False]:
-        for up in [1, -1]:
+        for down in [1, -1]:
             for length in range(1, 5):
                 if right:
-                    values = kern_trad(board, get_kern_diag_idx([last_move[0] + 1, last_move[1] + up], slope=[1, up], length=length))
+                    values = kern_trad(board, get_kern_diag_idx([last_move[0] + 1, last_move[1] + down], slope=[1, down], length=length))
                 else:
-                    values = kern_trad(flipped_board, get_kern_diag_idx([flipped_move[0] + 1, flipped_move[1] - up], slope=[1, -up], length=length))
+                    values = kern_trad(flipped_board, get_kern_diag_idx([flipped_move[0] + 1, flipped_move[1] + down], slope=[1, down], length=length))
                 number_player = np.count_nonzero(values == opponent)
 
-                longest[up].append(number_player)
+                longest[right][down].append(number_player)
 
                 if number_player < length:
                     break
 
-    return max(longest[1]) + max(longest[-1])
+    return max(max(longest[True][1]) + max(longest[False][-1]), max(longest[False][1]) + max(longest[True][-1])) - 1
 
 
 def find_longest_opponent(board, last_move: Tuple[int, int]):
@@ -294,7 +320,11 @@ def detect_captures(board, last_move):
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
     board_shape = board.shape
-    pattern = np.array([player, opponent, opponent, player])
+
+    # Patterns
+    attack_pattern = np.array([player, opponent, opponent, player])
+    defense_pattern_1 = np.array([opponent, player, player, player])  # forward
+    defense_pattern_2 = np.array([player, player, player, opponent])  # reverse
 
     directions = [
         (get_kern_row_idx, (1, 0)),
@@ -302,6 +332,9 @@ def detect_captures(board, last_move):
         (get_kern_diag_idx, (1, 1)),
         (get_kern_diag_idx, (1, -1)),
     ]
+
+    attack_detected = False
+    defense_detected = False
 
     for get_idx, (dx, dy) in directions:
         for sign in [1, -1]:
@@ -321,11 +354,18 @@ def detect_captures(board, last_move):
 
                 window = kern_trad(board, (x_idx, y_idx))
 
-                if np.array_equal(window, pattern):
+                # Check attack pattern
+                if np.array_equal(window, attack_pattern):
                     for pos in [0, 3]:
                         if x_idx[pos] == last_move[0] and y_idx[pos] == last_move[1]:
-                            return True
-    return False
+                            attack_detected = True
+
+                # Check defense pattern
+                if np.array_equal(window, defense_pattern_1) or np.array_equal(window, defense_pattern_2):
+                    if last_move[0] in x_idx and last_move[1] in y_idx:
+                        defense_detected = True
+
+    return {"attack": attack_detected, "defense": defense_detected}
 
 
 def check_neighbor(board, last_move):
@@ -355,21 +395,26 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
 
     board = np.pad(game.board.board, ((0, 5), (0, 5)), mode='constant')
 
-    longest = find_longest(board, last_move)
+    longest, blocked = find_longest(board, last_move).values()
     longest_opponent = find_longest_opponent(board, last_move)
+    attacking, defending = detect_captures(board, last_move).values()
 
-    if longest == 2:
-        print("longest 2")
-        val += SMALL_GAIN
-    elif longest == 3:
-        print("longest 3")
-        val += 3 * NORMAL_GAIN
-    elif longest == 4:
-        print("longest 4")
-        val += 6 * NORMAL_GAIN
-    elif longest == 5:
+    if blocked != 2:
+        if longest == 2:
+            print("longest 2")
+            val += SMALL_GAIN
+        elif longest == 3:
+            print("longest 3")
+            val += 3 * NORMAL_GAIN
+        elif longest == 4:
+            print("longest 4")
+            val += 6 * NORMAL_GAIN
+
+    if longest == 5:
         print("longest 5")
         val += BIG_GAIN
+    
+    
 
     if longest_opponent == 2:
         print("longest opponent 2")
@@ -381,9 +426,12 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
         print("longest opponent 4")
         val += BIG_GAIN
 
-    if detect_captures(board, last_move):
+    if attacking or defending:
         print("capture detected")
-        val += 10 * SMALL_GAIN + NORMAL_GAIN * player.capture_score
+        val += 3 * SMALL_GAIN + NORMAL_GAIN * player.capture_score
+    
+
+
 
     val += check_neighbor(board, last_move)
 
