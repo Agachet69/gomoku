@@ -2,9 +2,10 @@ import pygame
 from Board import Board, BOARD_SIZE
 from game import Game
 from player import Player
-from game_state_enum import GameState
+from game_state_enum import GameState, GameType
 import sys
 import time
+import numpy as np
 
 from config import WINDOW_SIZE, BLACK, GAME_SIZE, CELL_SIZE, GOBAN, WHITE, GRAY, RED
 from draw import draw_game, draw_finish_modal, draw_menu_screen, draw_temporary_stone
@@ -41,6 +42,7 @@ def init_game():
 
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
     pygame.display.set_caption("Gomoku AI")
+    ia_board = None
 
     while game.get_program_run() is True:
         for event in pygame.event.get():
@@ -80,12 +82,23 @@ def init_game():
                     draw_game(screen, fonts, game, event)
                     draw_finish_modal(screen, game, fonts, event)
         if (
-            game.game_state == GameState.Playing
-            or game.game_state == GameState.LastChance
+            (
+                game.game_state == GameState.Playing
+                or game.game_state == GameState.LastChance
+            )
+            and not np.array_equal(ia_board, game.board.board)
+            and game.type != GameType.PvP
         ):
+            ia_board = np.copy(game.board.board)
             draw_game(screen, fonts, game, event)
-        # elif game.game_state == GameState.Finish or game.game_state == GameState.Draw:
-        #     draw_finish_modal(screen, game, fonts, event)
+        elif (
+            (game.game_state == GameState.Finish or game.game_state == GameState.Draw)
+            and not np.array_equal(ia_board, game.board.board)
+            and game.type != GameType.PvP
+        ):
+            ia_board = np.copy(game.board.board)
+            draw_game(screen, fonts, game, event)
+            draw_finish_modal(screen, game, fonts, event)
         pygame.display.flip()
 
     pygame.quit()
