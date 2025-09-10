@@ -30,30 +30,14 @@ executor = ThreadPoolExecutor(max_workers=4)  # ajuste ce nombre selon ta machin
 
 
 POTENTIAL_MOVES_DIRECTIONS = [
-    (-2, -2),
-    (-2, -1),
-    (-2, 0),
-    (-2, 1),
-    (-2, 2),
-    (-1, -2),
     (-1, -1),
     (-1, 0),
     (-1, 1),
-    (-1, 2),
-    (0, -2),
     (0, -1),
     (0, 1),
-    (0, 2),
-    (1, -2),
     (1, -1),
     (1, 0),
     (1, 1),
-    (1, 2),
-    (2, -2),
-    (2, -1),
-    (2, 0),
-    (2, 1),
-    (2, 2),
 ]
 
 
@@ -119,7 +103,7 @@ def potential_moves(game: Game, player: Player):
 
 
 def get_kern_col_idx(
-    pos: Tuple[int, int], direction: int = 1, length: int = 5
+    pos, direction: int = 1, length: int = 5
 ):  # si dir = 1 alors vers le bas | si dir = -1 alors vers le haut
     return pos[0] * np.ones(length, dtype="int8"), np.arange(
         pos[1], pos[1] + direction * length, direction
@@ -127,7 +111,7 @@ def get_kern_col_idx(
 
 
 def get_kern_row_idx(
-    pos: Tuple[int, int], direction: int = 1, length: int = 5
+    pos, direction: int = 1, length: int = 5
 ):  # si dir = 1 alors vers le droite | si dir = -1 alors vers la gauche
     return np.arange(pos[0], pos[0] + direction * length, direction), [
         pos[1]
@@ -135,7 +119,7 @@ def get_kern_row_idx(
 
 
 def get_kern_diag_idx(
-    pos: Tuple[int, int], slope: Tuple[int, int] = 1, length: int = 5
+    pos, slope = 1, length: int = 5
 ):  # si slope = (1, 1) alors vers le bas droite | si dir = (-1, -1) alors vers le haut gauche | si dir = (-1, 1) alors vers le bas gauche | si dir = (1, -1) alors vers le haut droite
     return np.arange(pos[0], pos[0] + slope[0] * length, slope[0]), np.arange(
         pos[1], pos[1] + slope[1] * length, slope[1]
@@ -147,7 +131,7 @@ def kern_trad(board, kern_idx) -> np.array:
     return board[coords[:, 1], coords[:, 0]]
 
 
-def find_longest_row(board, last_move: Tuple[int, int]):
+def find_longest_row(board, last_move):
     longest = {
         1: [1],
         -1: [1],
@@ -156,27 +140,24 @@ def find_longest_row(board, last_move: Tuple[int, int]):
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
     blocked = 0
-    # print("last_move", last_move)
     for dir in [1, -1]:
         for length in range(2, 6):
             values = kern_trad(
                 board, get_kern_row_idx(last_move, direction=dir, length=length)
             )
             number_player = np.count_nonzero(values == player)
-            # print(get_kern_row_idx(last_move, direction=dir, length=length))
-            # print("dir", dir, "values", values)
 
             longest[dir].append(number_player)
 
             if number_player < length:
-                if values[-1] == opponent or not (0 <= last_move[0] + length < W):
+                if values[-1] == opponent or not (0 <= last_move[0] + length * dir < 19):
                     blocked += 1
                 break
 
     return {"longest": max(longest[1]) + max(longest[-1]) - 1, "blocked": blocked}
 
 
-def find_longest_col(board, last_move: Tuple[int, int]):
+def find_longest_col(board, last_move):
     longest = {
         1: [1],
         -1: [1],
@@ -195,7 +176,7 @@ def find_longest_col(board, last_move: Tuple[int, int]):
             longest[dir].append(number_player)
 
             if number_player < length:
-                if values[-1] == opponent or not (0 <= last_move[1] + length < H):
+                if values[-1] == opponent or not (0 <= last_move[1] + length * dir < 19):
                     blocked += 1
                 break
 
@@ -221,7 +202,7 @@ def find_longest_diag(board, last_move):
                         get_kern_diag_idx(last_move, slope=[1, down], length=length),
                     )
                 else:
-                    if last_move[0] - length < 0:
+                    if last_move[0] - length < 0 or last_move[1] - length < 0:
                         longest[right][down]["blocked"] = 1
                         break
                     values = kern_trad(
@@ -233,7 +214,7 @@ def find_longest_diag(board, last_move):
                 longest[right][down]["values"].append(number_player)
 
                 if number_player < length:
-                    if values[-1] == opponent:
+                    if values[-1] == opponent or not (0 <= last_move[0] + length * (1 if right else -1) < 19) or not (0 <= last_move[1] + length * down < 19):
                         longest[right][down]["blocked"] = 1
                     break
 
@@ -255,7 +236,7 @@ def find_longest_diag(board, last_move):
     return {"longest": longest_size, "blocked": blocked}
 
 
-def find_longest(board, last_move: Tuple[int, int]):
+def find_longest(board, last_move):
     longest = []
 
     longest.append(find_longest_row(board, last_move))
@@ -486,9 +467,9 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
         val += BIG_GAIN
 
     if attacking:
-        val += 3 * SMALL_GAIN + NORMAL_GAIN * player.capture_score
+        val += 4 * SMALL_GAIN + NORMAL_GAIN * player.capture_score
     if defending:
-        val += 3 * SMALL_GAIN + NORMAL_GAIN * opponent.capture_score
+        val += 4 * SMALL_GAIN + NORMAL_GAIN * opponent.capture_score
 
     val += check_neighbor(board, last_move)
 
@@ -650,7 +631,7 @@ def move_maker_thread(game: Game):
             )
 
             print("AI Played move calculated on the fly")
-        time.sleep(2.1)
+        time.sleep(.5)
 
 
 def thread_opponent(game: Game):
