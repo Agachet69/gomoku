@@ -29,7 +29,7 @@ def draw_text(screen, text, font, x, y):
     return rect
 
 
-def get_mode(event, game, ia, simple, futur):
+def get_mode(event, game, ia, simple, futur, screen, fonts):
     if ia.collidepoint(event.pos) or simple.collidepoint(event.pos):
         img_black = pygame.image.load("./assets/black.png").convert_alpha()
         img_white = pygame.image.load("./assets/white.png").convert_alpha()
@@ -45,8 +45,10 @@ def get_mode(event, game, ia, simple, futur):
         game.game_state = GameState.Playing
         print("→ Lancement du jeu")
         if ia.collidepoint(event.pos):
-            game.type = GameType.AI
-            init_threads(game)
+            draw_board(screen, fonts, game)
+            print("modale de selection noir ou blanc")
+            # game.type = GameType.AI
+            # init_threads(game)
         else:
             game.type = GameType.PvP
 
@@ -89,8 +91,8 @@ def draw_menu_screen(screen, fonts, game: Game, event):
     text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
 
     first_choice = fonts["font"].render("1. Play with AI", True, BLACK)
-    second_choice = fonts["font"].render("2. Play with friend", True, BLACK)
-    third_choice = fonts["font"].render("3. Prevoir l'avenir", True, BLACK)
+    second_choice = fonts["font"].render("2. Play with a friend", True, BLACK)
+    third_choice = fonts["font"].render("3. Crystal ball.", True, BLACK)
 
     first_choice_rect = first_choice.get_rect(
         center=(box_rect.left + first_choice.get_width() / 2 + 80, box_rect.top + 130)
@@ -111,7 +113,15 @@ def draw_menu_screen(screen, fonts, game: Game, event):
     pygame.display.flip()
 
     if event.type == pygame.MOUSEBUTTONDOWN:
-        get_mode(event, game, first_choice_rect, second_choice_rect, third_choice_rect)
+        get_mode(
+            event,
+            game,
+            first_choice_rect,
+            second_choice_rect,
+            third_choice_rect,
+            screen,
+            fonts,
+        )
 
 
 def draw_finish_modal(screen, game: Game, fonts, event):
@@ -226,8 +236,9 @@ def draw_board(screen, fonts, game: Game):
                 screen.blit(img, (px, py))
 
 
-def draw_turn(screen, fonts, game):
-    message_couleur = "White" if game.player_turn == 2 else "Black"
+def draw_turn(screen, fonts, game: Game):
+    player = game.get_player(game.player_turn)
+    message_couleur = player.name
     color = RED if message_couleur == "Red" else BLACK
 
     texte_partie1 = fonts["font_big"].render(message_couleur, True, color)

@@ -71,6 +71,7 @@ def init_game():
                             ):
                                 continue
                             my_player = game.get_player(game.get_me_value())
+                        # if game.type == GameType.AI :
                         draw_temporary_stone(x, y, screen, my_player)
                         game.board.set_temp_stone(x, y)
 
