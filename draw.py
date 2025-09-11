@@ -20,6 +20,7 @@ from config import (
     GRAY_ARROW,
     RED,
 )
+from game_utils import replay
 
 
 def draw_text(screen, text, font, x, y):
@@ -42,13 +43,13 @@ def get_mode(event, game, ia, simple, futur, screen, fonts):
         P1 = Player(black, black_hover, "Black", 1)
         P2 = Player(white, white_hover, "White", 2)
         game.set_players(P1, P2)
-        game.game_state = GameState.Playing
+        if simple.collidepoint(event.pos):
+            game.game_state = GameState.Playing
         print("→ Lancement du jeu")
         if ia.collidepoint(event.pos):
+            game.type = GameType.AI
             draw_board(screen, fonts, game)
-            print("modale de selection noir ou blanc")
-            # game.type = GameType.AI
-            # init_threads(game)
+
         else:
             game.type = GameType.PvP
 
@@ -71,57 +72,109 @@ def get_mode(event, game, ia, simple, futur, screen, fonts):
 
 
 def draw_menu_screen(screen, fonts, game: Game, event):
-    screen.fill((0, 0, 0))
-    screen.fill(GOBAN)
+    if game.type == GameType.AI and game.team is None:
+        draw_select_team_modal(screen, fonts, game, event)
+    else:
+        screen.fill((0, 0, 0))
+        screen.fill(GOBAN)
+        screen_rect = screen.get_rect()
+        box_width, box_height = 500, 300
+        box_rect = pygame.Rect(0, 0, box_width, box_height)
+        box_rect.center = screen_rect.center
+
+        draw_text(
+            screen,
+            "Bienvenue sur Gomoku",
+            fonts["font_big"],
+            WINDOW_SIZE // 2,
+            WINDOW_SIZE // 4,
+        )
+        text = "Choose a game mode"
+
+        text_surface = fonts["font_big"].render(text, True, BLACK)
+        text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
+
+        first_choice = fonts["font"].render("1. Play with AI", True, BLACK)
+        second_choice = fonts["font"].render("2. Play with a friend", True, BLACK)
+        third_choice = fonts["font"].render("3. Crystal ball.", True, BLACK)
+
+        first_choice_rect = first_choice.get_rect(
+            center=(
+                box_rect.left + first_choice.get_width() / 2 + 80,
+                box_rect.top + 130,
+            )
+        )
+        second_choice_rect = second_choice.get_rect(
+            center=(
+                box_rect.left + second_choice.get_width() / 2 + 80,
+                box_rect.top + 180,
+            )
+        )
+        third_choice_rect = third_choice.get_rect(
+            center=(
+                box_rect.left + third_choice.get_width() / 2 + 80,
+                box_rect.top + 230,
+            )
+        )
+
+        pygame.draw.rect(screen, WHITE, box_rect, border_radius=15)
+        screen.blit(text_surface, text_rect)
+        screen.blit(first_choice, first_choice_rect)
+        screen.blit(second_choice, second_choice_rect)
+        screen.blit(third_choice, third_choice_rect)
+
+        pygame.display.flip()
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            get_mode(
+                event,
+                game,
+                first_choice_rect,
+                second_choice_rect,
+                third_choice_rect,
+                screen,
+                fonts,
+            )
+
+
+def draw_select_team_modal(screen, fonts, game: Game, event):
     screen_rect = screen.get_rect()
-    box_width, box_height = 500, 300
+    box_width, box_height = 500, 180
     box_rect = pygame.Rect(0, 0, box_width, box_height)
     box_rect.center = screen_rect.center
 
-    draw_text(
-        screen,
-        "Bienvenue sur Gomoku",
-        fonts["font_big"],
-        WINDOW_SIZE // 2,
-        WINDOW_SIZE // 4,
-    )
-    text = "Choose a game mode"
+    text = "Choose your team color"
 
     text_surface = fonts["font_big"].render(text, True, BLACK)
     text_rect = text_surface.get_rect(center=(box_rect.centerx, box_rect.top + 60))
 
-    first_choice = fonts["font"].render("1. Play with AI", True, BLACK)
-    second_choice = fonts["font"].render("2. Play with a friend", True, BLACK)
-    third_choice = fonts["font"].render("3. Crystal ball.", True, BLACK)
+    black = fonts["font"].render("BLACK", True, BLACK)
+    white = fonts["font"].render("WHITE", True, BLACK)
 
-    first_choice_rect = first_choice.get_rect(
-        center=(box_rect.left + first_choice.get_width() / 2 + 80, box_rect.top + 130)
+    black_rect = black.get_rect(
+        center=(box_rect.left + black.get_width() / 2 + 80, box_rect.top + 130)
     )
-    second_choice_rect = second_choice.get_rect(
-        center=(box_rect.left + second_choice.get_width() / 2 + 80, box_rect.top + 180)
-    )
-    third_choice_rect = third_choice.get_rect(
-        center=(box_rect.left + third_choice.get_width() / 2 + 80, box_rect.top + 230)
+    white_rect = white.get_rect(
+        center=(box_rect.left + white.get_width() / 2 + 280, box_rect.top + 130)
     )
 
     pygame.draw.rect(screen, WHITE, box_rect, border_radius=15)
     screen.blit(text_surface, text_rect)
-    screen.blit(first_choice, first_choice_rect)
-    screen.blit(second_choice, second_choice_rect)
-    screen.blit(third_choice, third_choice_rect)
+    screen.blit(black, black_rect)
+    screen.blit(white, white_rect)
 
     pygame.display.flip()
 
     if event.type == pygame.MOUSEBUTTONDOWN:
-        get_mode(
-            event,
-            game,
-            first_choice_rect,
-            second_choice_rect,
-            third_choice_rect,
-            screen,
-            fonts,
-        )
+        if black_rect.collidepoint(event.pos):
+            game.team = 1
+            game.game_state = GameState.Playing
+            init_threads(game)
+
+        elif white_rect.collidepoint(event.pos):
+            game.team = 2
+            game.game_state = GameState.Playing
+            init_threads(game)
 
 
 def draw_finish_modal(screen, game: Game, fonts, event):
@@ -174,7 +227,7 @@ def draw_finish_modal(screen, game: Game, fonts, event):
         abs_replay_rect = replay_rect.move(box_rect.topleft)
         abs_menu_rect = menu_rect.move(box_rect.topleft)
         if abs_replay_rect.collidepoint(event.pos):
-            game.replay()
+            replay(game)
         elif abs_menu_rect.collidepoint(event.pos):
             game.menu()
 

@@ -18,6 +18,7 @@ class Game:
         self.step_historic = 0
         self.last_chance_capture = None
         self.type = None
+        self.team = None
 
     def set_players(self, P1: Player, P2: Player):
         self.board = Board()
@@ -50,16 +51,10 @@ class Game:
     def exit(self):
         self.program_run = False
 
-    def replay(self):
-        self.board = Board()
-        self.winner = None
-        self.player_turn = 1
-        self.P1.capture_score = 0
-        self.P2.capture_score = 0
-        self.game_state = GameState.Playing
-
     def menu(self):
         self.game_state = GameState.Creating
+        self.team = None
+        self.type = None
 
     # Méthodes exposées pour multiprocessing
     def get_game_state(self):

@@ -56,11 +56,19 @@ def init_game():
                 game.game_state == GameState.Playing
                 or game.game_state == GameState.LastChance
             ):
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                if (
+                    event.type == pygame.MOUSEBUTTONDOWN
+                    and game.type != GameType.FUTURE
+                    and (game.team is None or game.team == game.player_turn)
+                ):
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)
                 draw_game(screen, fonts, game, event)
-                if event.type == pygame.MOUSEMOTION:
+                if (
+                    event.type == pygame.MOUSEMOTION
+                    and game.type != GameType.FUTURE
+                    and (game.team is None or game.team == game.player_turn)
+                ):
                     if hasattr(event, "pos"):
                         x, y = get_grid_position(event.pos)
                         if x != game.board.temp_stonex or y != game.board.temp_stoney:
@@ -71,7 +79,6 @@ def init_game():
                             ):
                                 continue
                             my_player = game.get_player(game.get_me_value())
-                        # if game.type == GameType.AI :
                         draw_temporary_stone(x, y, screen, my_player)
                         game.board.set_temp_stone(x, y)
 

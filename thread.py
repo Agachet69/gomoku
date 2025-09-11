@@ -108,12 +108,14 @@ def potential_moves(game: Game, player: Player):
                     continue
                 if not game.board.is_legal_moove(nx, ny):
                     continue
-                if game.board.is_double_three(nx, ny, game):
-                    captured, new_board, score = game.board.check_is_capture_moove(
-                        game, player, opponent, nx, ny
-                    )
-                    if not captured:
-                        continue
+                is_capture, _, _ = game.board.check_is_capture_moove(
+                    game, player, opponent, nx, ny
+                )
+                if not is_capture and game.board.detect_double_three_anywhere(
+                    player_value, nx, ny
+                ):
+                    continue
+
                 moves.add((nx, ny))
     return moves
 
@@ -463,9 +465,9 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
     longest_opponent = find_longest_opponent(board, last_move)
     attacking, defending = detect_captures(board, last_move).values()
 
-    print(f"longest: {longest} | blocked: {blocked}")
-    print(f"longest_opponent: {longest_opponent}")
-    print(f"attacking: {attacking} | defending: {defending}")
+    # print(f"longest: {longest} | blocked: {blocked}")
+    # print(f"longest_opponent: {longest_opponent}")
+    # print(f"attacking: {attacking} | defending: {defending}")
 
     if blocked != 2:
         if longest == 2:
@@ -492,7 +494,7 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
 
     val += check_neighbor(board, last_move)
 
-    print(f"score: {val}")
+    # print(f"score: {val}")
 
     return val
 
@@ -580,11 +582,9 @@ def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, las
 
 
 def move_maker_thread(game: Game):
-    # last_turn = game.P1.name
     while game.program_run and game.game_state != GameState.Finish:
         if game.type != GameType.FUTURE:
-            if game.player_turn == game.P1.value:
-                # last_turn = game.P1.name
+            if game.player_turn == game.team:
                 time.sleep(0.1)
                 continue
 
@@ -650,7 +650,7 @@ def move_maker_thread(game: Game):
             )
 
             print("AI Played move calculated on the fly")
-        time.sleep(2.1)
+        # time.sleep(2.1)
 
 
 def thread_opponent(game: Game):
