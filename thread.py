@@ -592,6 +592,7 @@ def move_maker_thread(game: Game):
 
         if not np.any(game.board.board == player_value):
             direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
+            start_time = time.time()
 
             if last_move is None:
                 game.board.play_moove(
@@ -606,7 +607,8 @@ def move_maker_thread(game: Game):
                     # and 0 <= last_move[0] + direction[0] < cols
                 ):
                     direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
-
+                elapsed = time.time() - start_time  # Fin du chrono
+                game.time_response = f"{elapsed:.3f}s"
                 game.board.play_moove(
                     game, last_move[0] + direction[0], last_move[1] + direction[1]
                 )
@@ -632,14 +634,13 @@ def move_maker_thread(game: Game):
             executor.submit(thread_AI, game, move_manager, player, opponent)
 
             while move_manager.running:
-                # print("oui")
                 time.sleep(0.01)
             game.board.play_moove(
                 game, move_manager.move_to_do[0], move_manager.move_to_do[1]
             )
 
             print("AI Played move calculated on the fly")
-        time.sleep(0.5)
+        time.sleep(0.2)
 
 
 def thread_opponent(game: Game):
@@ -722,6 +723,7 @@ def thread_AI(
     move_manager.running = False
 
     elapsed = time.time() - start_time  # Fin du chrono
+    game.time_response = f"{elapsed:.3f}s"
     print(
         f"[{elapsed:.3f}s] Thread AI chose move {move_manager.move_to_do} (score: {max_score:03}) in response to human move {move_manager.move}"
     )

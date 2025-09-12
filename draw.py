@@ -193,8 +193,8 @@ def draw_finish_modal(screen, game: Game, fonts, event):
         text_surface = fonts["font_big"].render(text, True, BLACK)
         text_rect = text_surface.get_rect(center=(box_width // 2, 60))
 
-    replay_surface = fonts["font"].render("Rejouer", True, BLACK)
-    menu_surface = fonts["font"].render("Menu principal", True, BLACK)
+    replay_surface = fonts["font"].render("Replay", True, BLACK)
+    menu_surface = fonts["font"].render("Main menu", True, BLACK)
 
     max_text_width = max(replay_surface.get_width(), menu_surface.get_width())
     button_width = max_text_width + 40
@@ -391,6 +391,20 @@ def draw_arrow(screen, color, x, y, orientation, width=30, height=25):
     return arrow_rect
 
 
+def draw_time_response(screen, fonts, game: Game):
+    if game.time_response is not None:
+        time_response = game.time_response
+        time_response_screen = fonts["font"].render(time_response, True, RED)
+
+        screen.blit(
+            time_response_screen,
+            (
+                WINDOW_SIZE - 80,
+                WINDOW_SIZE - 30,
+            ),
+        )
+
+
 def draw_historic_arrows(screen, fonts, game: Game, event):
     screen_rect = screen.get_rect()
 
@@ -425,3 +439,5 @@ def draw_game(screen, fonts, game: Game, event):
     draw_capture_score(screen, fonts, game)
     if game.type == GameType.PvP:
         draw_historic_arrows(screen, fonts, game, event)
+    if game.type == GameType.AI:
+        draw_time_response(screen, fonts, game)

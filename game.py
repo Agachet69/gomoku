@@ -19,6 +19,7 @@ class Game:
         self.last_chance_capture = None
         self.type = None
         self.team = None
+        self.time_response = None
 
     def set_players(self, P1: Player, P2: Player):
         self.board = Board()
@@ -55,6 +56,7 @@ class Game:
         self.game_state = GameState.Creating
         self.team = None
         self.type = None
+        self.time_response = None
 
     # Méthodes exposées pour multiprocessing
     def get_game_state(self):
@@ -94,6 +96,8 @@ class Game:
                 diff = old_opponent_count - actual_opponent_count
                 player = self.get_player(1 if opponent_value == 2 else 2)
                 player.capture_score -= diff
+            if self.game_state == GameState.LastChance:
+                self.game_state = GameState.Playing
             self.board.board = self.historic[self.step_historic].copy()
 
     def get_front_historic(self):
