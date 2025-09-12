@@ -95,6 +95,7 @@ class Game:
             if old_opponent_count > actual_opponent_count:
                 diff = old_opponent_count - actual_opponent_count
                 player = self.get_player(1 if opponent_value == 2 else 2)
+                # TODO gerer lhistorique sur la capture de fin
                 player.capture_score -= diff
             if self.game_state == GameState.LastChance:
                 self.game_state = GameState.Playing
