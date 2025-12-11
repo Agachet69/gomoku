@@ -25,7 +25,8 @@ class Game:
         self.player_turn = 1
         self.P1 = P1
         self.P2 = P2
-        self.winner = P2
+        ## self.winner initialisé deux fois et une fois directement à P2 ?
+        self.winner = P2 
 
     def has_played(self):
         player = self.player_turn

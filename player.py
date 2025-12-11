@@ -12,4 +12,5 @@ class Player:
         copied_player = Player(self.img_path, self.img_hover, self.name, self.value)
         copied_player.mooves = self.mooves
         copied_player.capture_score = self.capture_score
+        # Ajouter une copie des derniers coups joués aussi ?
         return copied_player

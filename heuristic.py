@@ -45,6 +45,8 @@ def evaluate_alignments(board, player_value: int):
             for dx, dy in directions:
                 prev_x, prev_y = x - dx, y - dy
 
+            ## Attention á l'indentation ici, les lignes suivantes doivent être dans la 
+            # boucle for dx, dy in directions sinon vous ne vérifiez que la dernière direction
             if is_on_board(prev_x, prev_y) and board[prev_y][prev_x] == player_value:
                 continue
 
