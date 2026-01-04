@@ -1,33 +1,29 @@
+# thread.py
 import random
 import sys
-from typing import Literal, Tuple
+import time
+import threading
+from typing import Any, Dict, Tuple, Optional
 
+import numpy as np
 import pygame
+from concurrent.futures import ThreadPoolExecutor
+
 from Board import Board, HumanMoveManager
 from game import Game
 from game_state_enum import GameState, GameType
-import threading
-import time
-import numpy as np
-
 from player import Player
 
-# from heuristic import evaluate
-from concurrent.futures import ThreadPoolExecutor
 
-
-BIG_LOSS = -1000000
-BIG_GAIN = 1000000
+BIG_LOSS = -1_000_000
+BIG_GAIN = 1_000_000
 NORMAL_GAIN = 100
 SMALL_GAIN = 1
-
 
 DEPTH_MAX = 1
 NUMBER_BEST_MOVES = 4
 
-
-executor = ThreadPoolExecutor(max_workers=4)  # ajuste ce nombre selon ta machine
-
+executor = ThreadPoolExecutor(max_workers=4)
 
 POTENTIAL_MOVES_DIRECTIONS = [
     (-1, -1),
@@ -40,117 +36,114 @@ POTENTIAL_MOVES_DIRECTIONS = [
     (1, 1),
 ]
 
+# Debug counters (optional)
+NODES = 0
+T0 = 0.0
+
 
 def init_threads(game):
-    # thread1 = threading.Thread(target=thread_opponent, args=(game,))
-    # thread1.start()
     move_maker_thr = threading.Thread(target=move_maker_thread, args=(game,))
     move_maker_thr.start()
 
-    # thread2  = threading.Thread(target=thread_AI, args=(game,))
-    # thread2.start()
-    # return thread
-
-
-# def potential_moves(game: Game, player: Player):
-#     board = game.board.board
-#     rows, cols = board.shape
-#     player_value = player.value
-#     opponent = game.get_opponent(player_value)
-#     moves = set()
-
-#     player_positions = np.argwhere(board == player_value)
-
-#     for i, j in player_positions:
-#         for dx, dy in POTENTIAL_MOVES_DIRECTIONS:
-#             ni, nj = i + dy, j + dx
-#             if 0 <= ni < rows and 0 <= nj < cols and board[ni, nj] == 0:
-#                 if game.board.is_legal_moove(nj, ni):
-#                     is_double_three = game.board.is_double_three(nj, ni, game)
-#                     is_capture = game.board.check_is_capture_moove(game, player, opponent, nj, ni)
-#                     if not (is_double_three and not is_capture):
-#                         moves.add((nj, ni))
-
-#     return moves
-
 
 def potential_moves(game: Game, player: Player):
+    """
+    Génère les coups candidats autour des pierres existantes (les deux joueurs),
+    en filtrant les coups illégaux (double-three non capturant, etc.).
+    IMPORTANT: cast en int pour éviter les np.int64 qui cassent parfois les règles/GUI.
+    """
     board = game.board.board
     rows, cols = board.shape
     player_value = player.value
     opponent = game.get_opponent(player_value)
     moves = set()
 
-    # Positions des deux joueurs
-    player_positions = np.argwhere((board == player_value) | (board == opponent.value))
+    # positions des deux joueurs
+    positions = np.argwhere((board == player_value) | (board == opponent.value))
 
-    for i, j in player_positions:
+    for iy, ix in positions:
         for dx, dy in POTENTIAL_MOVES_DIRECTIONS:
-            ny, nx = i + dy, j + dx
+            ny = int(iy + dy)
+            nx = int(ix + dx)
             if 0 <= ny < rows and 0 <= nx < cols and board[ny, nx] == 0:
-                if (nx, ny) in moves:
+                key = (nx, ny)
+                if key in moves:
                     continue
                 if not game.board.is_legal_moove(nx, ny):
                     continue
+
+                # Double-three : autorisé seulement si le coup est une capture
                 if game.board.is_double_three(nx, ny, game):
-                    captured, new_board, score = game.board.check_is_capture_moove(
-                        game, player, opponent, nx, ny
-                    )
+                    try:
+                        captured, _, _ = game.board.check_is_capture_moove(
+                            game, player, opponent, nx, ny
+                        )
+                    except TypeError:
+                        captured, _, _ = game.board.check_is_capture_moove(
+                            game, player, opponent.value, nx, ny
+                        )
                     if not captured:
                         continue
-                moves.add((nx, ny))
+
+                moves.add((int(nx), int(ny)))
+
     return moves
 
 
-def get_kern_col_idx(
-    pos, direction: int = 1, length: int = 5
-):  # si dir = 1 alors vers le bas | si dir = -1 alors vers le haut
-    return pos[0] * np.ones(length, dtype="int8"), np.arange(
-        pos[1], pos[1] + direction * length, direction
+def get_kern_col_idx(pos, direction: int = 1, length: int = 5):
+    return pos[0] * np.ones(length, dtype="int16"), np.arange(
+        pos[1], pos[1] + direction * length, direction, dtype="int16"
     )
 
 
-def get_kern_row_idx(
-    pos, direction: int = 1, length: int = 5
-):  # si dir = 1 alors vers le droite | si dir = -1 alors vers la gauche
-    return np.arange(pos[0], pos[0] + direction * length, direction), [
-        pos[1]
-    ] * np.ones(length, dtype="int8")
-
-
-def get_kern_diag_idx(
-    pos, slope = 1, length: int = 5
-):  # si slope = (1, 1) alors vers le bas droite | si dir = (-1, -1) alors vers le haut gauche | si dir = (-1, 1) alors vers le bas gauche | si dir = (1, -1) alors vers le haut droite
-    return np.arange(pos[0], pos[0] + slope[0] * length, slope[0]), np.arange(
-        pos[1], pos[1] + slope[1] * length, slope[1]
+def get_kern_row_idx(pos, direction: int = 1, length: int = 5):
+    return np.arange(pos[0], pos[0] + direction * length, direction, dtype="int16"), (
+        [pos[1]] * length
     )
 
 
-def kern_trad(board, kern_idx) -> np.array:
-    coords = np.column_stack(kern_idx)
-    return board[coords[:, 1], coords[:, 0]]
+def get_kern_diag_idx(pos, slope=(1, 1), length: int = 5):
+    return np.arange(pos[0], pos[0] + slope[0] * length, slope[0], dtype="int16"), np.arange(
+        pos[1], pos[1] + slope[1] * length, slope[1], dtype="int16"
+    )
+
+
+def kern_trad(board: np.ndarray, kern_idx) -> Optional[np.ndarray]:
+    """
+    Retourne la fenêtre board[y,x] correspondant aux coords produites par (x_idx,y_idx).
+    SAFE: si une coord sort du plateau -> None (évite IndexError).
+    """
+    x_idx, y_idx = kern_idx
+    x = np.asarray(x_idx, dtype=np.int64)
+    y = np.asarray(y_idx, dtype=np.int64)
+
+    H, W = board.shape
+    if np.any(x < 0) or np.any(x >= W) or np.any(y < 0) or np.any(y >= H):
+        return None
+    return board[y, x]
 
 
 def find_longest_row(board, last_move):
-    longest = {
-        1: [1],
-        -1: [1],
-    }
+    longest = {1: [1], -1: [1]}
     H, W = board.shape
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
     blocked = 0
+
     for dir in [1, -1]:
         for length in range(2, 6):
-            values = kern_trad(
-                board, get_kern_row_idx(last_move, direction=dir, length=length)
-            )
-            number_player = np.count_nonzero(values == player)
+            values = kern_trad(board, get_kern_row_idx(last_move, direction=dir, length=length))
+            if values is None:
+                blocked += 1
+                break
 
+            number_player = np.count_nonzero(values == player)
             longest[dir].append(number_player)
 
             if number_player < length:
-                if values[-1] == opponent or not (0 <= last_move[0] + length * dir < 19):
+                # bord / adversaire bloque
+                end_x = last_move[0] + (length - 1) * dir
+                if values[-1] == opponent or not (0 <= end_x < W):
                     blocked += 1
                 break
 
@@ -158,25 +151,25 @@ def find_longest_row(board, last_move):
 
 
 def find_longest_col(board, last_move):
-    longest = {
-        1: [1],
-        -1: [1],
-    }
+    longest = {1: [1], -1: [1]}
     H, W = board.shape
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
     blocked = 0
+
     for dir in [1, -1]:
         for length in range(2, 6):
-            values = kern_trad(
-                board, get_kern_col_idx(last_move, direction=dir, length=length)
-            )
-            number_player = np.count_nonzero(values == player)
+            values = kern_trad(board, get_kern_col_idx(last_move, direction=dir, length=length))
+            if values is None:
+                blocked += 1
+                break
 
+            number_player = np.count_nonzero(values == player)
             longest[dir].append(number_player)
 
             if number_player < length:
-                if values[-1] == opponent or not (0 <= last_move[1] + length * dir < 19):
+                end_y = last_move[1] + (length - 1) * dir
+                if values[-1] == opponent or not (0 <= end_y < H):
                     blocked += 1
                 break
 
@@ -184,87 +177,67 @@ def find_longest_col(board, last_move):
 
 
 def find_longest_diag(board, last_move):
-    longest = {
-        True: {1: {"values": [1], "blocked": 0}, -1: {"values": [1], "blocked": 0}},
-        False: {1: {"values": [1], "blocked": 0}, -1: {"values": [1], "blocked": 0}},
-    }
+    """
+    Version robuste sans np.fliplr : on teste 2 diagonales (\, /) via kernels + guards.
+    """
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
+    H, W = board.shape
 
-    flipped_board = np.fliplr(board)
-    flipped_move = (19 - last_move[0] + 4, last_move[1])
-    for right in [True, False]:
-        for down in [1, -1]:
+    def diag_axis(slope):
+        # slope = (1,1) ou (1,-1)
+        longest = {1: [1], -1: [1]}
+        blocked = {1: 0, -1: 0}
+
+        for dir in [1, -1]:
             for length in range(2, 6):
-                if right:
-                    values = kern_trad(
-                        board,
-                        get_kern_diag_idx(last_move, slope=[1, down], length=length),
-                    )
-                else:
-                    if last_move[0] - length < 0 or last_move[1] - length < 0:
-                        longest[right][down]["blocked"] = 1
-                        break
-                    values = kern_trad(
-                        flipped_board,
-                        get_kern_diag_idx(flipped_move, slope=[1, down], length=length),
-                    )
-                number_player = np.count_nonzero(values == player)
-
-                longest[right][down]["values"].append(number_player)
-
-                if number_player < length:
-                    if values[-1] == opponent or not (0 <= last_move[0] + length * (1 if right else -1) < 19) or not (0 <= last_move[1] + length * down < 19):
-                        longest[right][down]["blocked"] = 1
+                dx = slope[0] * dir
+                dy = slope[1] * dir
+                values = kern_trad(board, get_kern_diag_idx(last_move, slope=(dx, dy), length=length))
+                if values is None:
+                    blocked[dir] = 1
                     break
 
-    size_diag_high_left_down_right = max(longest[True][1]["values"]) + max(
-        longest[False][-1]["values"]
-    )
-    size_diag_down_left_high_right = max(longest[False][1]["values"]) + max(
-        longest[True][-1]["values"]
-    )
-    longest_size = (
-        max(size_diag_high_left_down_right, size_diag_down_left_high_right) - 1
-    )
+                number_player = np.count_nonzero(values == player)
+                longest[dir].append(number_player)
 
-    if size_diag_high_left_down_right > size_diag_down_left_high_right:
-        blocked = longest[True][1]["blocked"] + longest[False][-1]["blocked"]
-    else:
-        blocked = longest[False][1]["blocked"] + longest[True][-1]["blocked"]
+                if number_player < length:
+                    end_x = last_move[0] + (length - 1) * dx
+                    end_y = last_move[1] + (length - 1) * dy
+                    if values[-1] == opponent or not (0 <= end_x < W) or not (0 <= end_y < H):
+                        blocked[dir] = 1
+                    break
 
-    return {"longest": longest_size, "blocked": blocked}
+        size = max(longest[1]) + max(longest[-1]) - 1
+        blk = blocked[1] + blocked[-1]
+        return {"longest": size, "blocked": blk}
+
+    d1 = diag_axis((1, 1))
+    d2 = diag_axis((1, -1))
+    return max([d1, d2], key=lambda x: x["longest"])
 
 
 def find_longest(board, last_move):
     longest = []
-
     longest.append(find_longest_row(board, last_move))
     longest.append(find_longest_col(board, last_move))
     longest.append(find_longest_diag(board, last_move))
-
     return max(longest, key=lambda x: x["longest"])
 
 
 def find_longest_opponent_row(board, last_move: Tuple[int, int]):
-    longest = {
-        1: [0],
-        -1: [0],
-    }
+    longest = {1: [0], -1: [0]}
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
+
     for dir in [1, -1]:
         for length in range(1, 5):
-            values = kern_trad(
-                board,
-                get_kern_row_idx(
-                    [last_move[0] + dir, last_move[1]], direction=dir, length=length
-                ),
-            )
+            start = [last_move[0] + dir, last_move[1]]
+            values = kern_trad(board, get_kern_row_idx(start, direction=dir, length=length))
+            if values is None:
+                break
             number_player = np.count_nonzero(values == opponent)
-
             longest[dir].append(number_player)
-
             if number_player < length:
                 break
 
@@ -272,24 +245,18 @@ def find_longest_opponent_row(board, last_move: Tuple[int, int]):
 
 
 def find_longest_opponent_col(board, last_move: Tuple[int, int]):
-    longest = {
-        1: [0],
-        -1: [0],
-    }
+    longest = {1: [0], -1: [0]}
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
+
     for dir in [1, -1]:
         for length in range(1, 5):
-            values = kern_trad(
-                board,
-                get_kern_col_idx(
-                    [last_move[0], last_move[1] + dir], direction=dir, length=length
-                ),
-            )
+            start = [last_move[0], last_move[1] + dir]
+            values = kern_trad(board, get_kern_col_idx(start, direction=dir, length=length))
+            if values is None:
+                break
             number_player = np.count_nonzero(values == opponent)
-
             longest[dir].append(number_player)
-
             if number_player < length:
                 break
 
@@ -297,49 +264,35 @@ def find_longest_opponent_col(board, last_move: Tuple[int, int]):
 
 
 def find_longest_opponent_diag(board, last_move: Tuple[int, int]):
-    longest = {
-        True: {1: [1], -1: [1]},
-        False: {1: [1], -1: [1]},
-    }
+    """
+    Fix du crash: aucun accès hors-bord (kern_trad safe + break).
+    On mesure la longueur de l'adversaire à partir d'une case adjacente en diagonale.
+    """
+    longest = {True: {1: [1], -1: [1]}, False: {1: [1], -1: [1]}}
     player = board[last_move[1], last_move[0]]
     opponent = 3 - player
 
-    flipped_board = np.fliplr(board)
-    flipped_move = (19 - last_move[0] + 4, last_move[1])
-    for right in [True, False]:
+    for slope in [(1, 1), (1, -1)]:
+        # right=True/False historique, ici on encode ça via slope
         for down in [1, -1]:
+            # down contrôle le signe sur la 2e composante
+            s = (slope[0], slope[1] * down)
             for length in range(1, 5):
-                if right:
-                    values = kern_trad(
-                        board,
-                        get_kern_diag_idx(
-                            [last_move[0] + 1, last_move[1] + down],
-                            slope=[1, down],
-                            length=length,
-                        ),
-                    )
-                else:
-                    if last_move[0] - length < 0:
-                        break
-                    values = kern_trad(
-                        flipped_board,
-                        get_kern_diag_idx(
-                            [flipped_move[0] + 1, flipped_move[1] + down],
-                            slope=[1, down],
-                            length=length,
-                        ),
-                    )
+                start = [last_move[0] + s[0], last_move[1] + s[1]]
+                values = kern_trad(board, get_kern_diag_idx(start, slope=s, length=length))
+                if values is None:
+                    break
                 number_player = np.count_nonzero(values == opponent)
-
-                longest[right][down].append(number_player)
-
+                # on stocke dans un des paniers pour garder une structure similaire
+                bucket = True if slope == (1, 1) else False
+                longest[bucket][down].append(number_player)
                 if number_player < length:
                     break
 
     return (
         max(
-            max(longest[True][1]) + max(longest[False][-1]),
-            max(longest[False][1]) + max(longest[True][-1]),
+            max(longest[True][1]) + max(longest[True][-1]),
+            max(longest[False][1]) + max(longest[False][-1]),
         )
         - 1
     )
@@ -348,11 +301,9 @@ def find_longest_opponent_diag(board, last_move: Tuple[int, int]):
 def find_longest_opponent(board, last_move: Tuple[int, int]):
     player = board[last_move[1], last_move[0]]
     longest = [1]
-
     longest.append(find_longest_opponent_row(board, last_move))
     longest.append(find_longest_opponent_col(board, last_move))
     longest.append(find_longest_opponent_diag(board, last_move))
-
     return max(longest)
 
 
@@ -361,10 +312,9 @@ def detect_captures(board, last_move):
     opponent = 3 - player
     board_shape = board.shape
 
-    # Patterns
     attack_pattern = np.array([player, opponent, opponent, player])
-    defense_pattern_1 = np.array([opponent, player, player, player])  # forward
-    defense_pattern_2 = np.array([player, player, player, opponent])  # reverse
+    defense_pattern_1 = np.array([opponent, player, player, player])
+    defense_pattern_2 = np.array([player, player, player, opponent])
 
     directions = [
         (get_kern_row_idx, (1, 0)),
@@ -389,25 +339,23 @@ def detect_captures(board, last_move):
                     x_idx, y_idx = get_idx((start_x, start_y), direction=sign, length=4)
 
                 if (
-                    np.any(x_idx < 0)
-                    or np.any(x_idx >= board_shape[1])
-                    or np.any(y_idx < 0)
-                    or np.any(y_idx >= board_shape[0])
+                    np.any(np.asarray(x_idx) < 0)
+                    or np.any(np.asarray(x_idx) >= board_shape[1])
+                    or np.any(np.asarray(y_idx) < 0)
+                    or np.any(np.asarray(y_idx) >= board_shape[0])
                 ):
                     continue
 
                 window = kern_trad(board, (x_idx, y_idx))
+                if window is None:
+                    continue
 
-                # Check attack pattern
                 if np.array_equal(window, attack_pattern):
                     for pos in [0, 3]:
                         if x_idx[pos] == last_move[0] and y_idx[pos] == last_move[1]:
                             attack_detected = True
 
-                # Check defense pattern
-                if np.array_equal(window, defense_pattern_1) or np.array_equal(
-                    window, defense_pattern_2
-                ):
+                if np.array_equal(window, defense_pattern_1) or np.array_equal(window, defense_pattern_2):
                     if last_move[0] in x_idx and last_move[1] in y_idx:
                         defense_detected = True
 
@@ -415,38 +363,103 @@ def detect_captures(board, last_move):
 
 
 def check_neighbor(board, last_move):
-    mid_col = kern_trad(board, get_kern_col_idx(np.add(last_move, (0, -1)), length=3))
-    mid_row = kern_trad(board, get_kern_row_idx(np.add(last_move, (-1, 0)), length=3))
+    # safe near borders
+    mid_col = kern_trad(board, get_kern_col_idx(tuple(np.add(last_move, (0, -1))), length=3))
+    mid_row = kern_trad(board, get_kern_row_idx(tuple(np.add(last_move, (-1, 0))), length=3))
+    if mid_col is None or mid_row is None:
+        return 0
 
     player = mid_col[1]
-
     values = [mid_col[0], mid_col[2], mid_row[0], mid_row[2]]
-
     return values.count(player)
 
 
-def evaluate(game: Game, last_move: Tuple[int, int], player):
-    print(f"evaluate: [{last_move[0]}, {last_move[1]}]")
+def _apply_board_update_in_place(game, new_board: np.ndarray) -> None:
+    if hasattr(game.board, "update_board"):
+        game.board.update_board(new_board)
+    else:
+        game.board.board[:, :] = new_board
 
+
+def make_move(game, player, x: int, y: int) -> Dict[str, Any]:
+    board = game.board.board
+    opponent = game.get_opponent(player.value)
+
+    prev: Dict[str, Any] = {
+        "player_turn": game.player_turn,
+        "winner": getattr(game, "winner", None),
+        "game_state": getattr(game, "game_state", None),
+        "capture_score_p": player.capture_score,
+        "capture_score_o": opponent.capture_score,
+        "last_moves_p": list(getattr(player, "last_moves", [])),
+        "last_moves_o": list(getattr(opponent, "last_moves", [])),
+        "placed": (int(x), int(y)),
+        "captured": [],
+    }
+
+    is_cap = False
+    new_board = None
+    score = 0
+
+    try:
+        is_cap, new_board, score = game.board.check_is_capture_moove(game, player, opponent.value, x, y)
+    except TypeError:
+        is_cap, new_board, score = game.board.check_is_capture_moove(game, player, opponent, x, y)
+
+    if is_cap:
+        captured_mask = (board == opponent.value) & (new_board == 0)
+        cy, cx = np.where(captured_mask)
+        prev["captured"] = list(zip(cx.tolist(), cy.tolist()))
+        _apply_board_update_in_place(game, new_board)
+        player.capture_score += score
+
+    board[int(y), int(x)] = player.value
+
+    if hasattr(player, "last_moves"):
+        player.last_moves.insert(0, (int(x), int(y)))
+
+    game.player_turn = opponent.value
+    return prev
+
+
+def unmake_move(game, player, prev: Dict[str, Any]) -> None:
+    board = game.board.board
+    opponent = game.get_opponent(player.value)
+
+    x, y = prev["placed"]
+    board[int(y), int(x)] = 0
+
+    for cx, cy in prev.get("captured", []):
+        board[int(cy), int(cx)] = opponent.value
+
+    player.capture_score = prev["capture_score_p"]
+    opponent.capture_score = prev["capture_score_o"]
+
+    if hasattr(player, "last_moves"):
+        player.last_moves = prev["last_moves_p"]
+    if hasattr(opponent, "last_moves"):
+        opponent.last_moves = prev["last_moves_o"]
+
+    game.player_turn = prev["player_turn"]
+    if "winner" in prev:
+        game.winner = prev["winner"]
+    if "game_state" in prev:
+        game.game_state = prev["game_state"]
+
+
+def evaluate(game: Game, last_move: Tuple[int, int], player: Player):
     val = 0
-    board = game.board.board  # np.ndarray 2D
-    player_value = player.value
-    opponent = game.get_opponent(player_value)
-    opponent_value = 3 - player_value  # Si 1 → 2 ; si 2 → 1
-    rows, cols = board.shape
-    x, y = last_move  # (colonne, ligne)
+    board = game.board.board
 
-    directions = [1, -1]
+    longest_info = find_longest(board, last_move)
+    longest = longest_info["longest"]
+    blocked = longest_info["blocked"]
 
-    board = np.pad(game.board.board, ((0, 5), (0, 5)), mode="constant")
-
-    longest, blocked = find_longest(board, last_move).values()
     longest_opponent = find_longest_opponent(board, last_move)
-    attacking, defending = detect_captures(board, last_move).values()
+    cap = detect_captures(board, last_move)
+    attacking, defending = cap["attack"], cap["defense"]
 
-    print(f"longest: {longest} | blocked: {blocked}")
-    print(f"longest_opponent: {longest_opponent}")
-    print(f"attacking: {attacking} | defending: {defending}")
+    opponent = game.get_opponent(player.value)
 
     if blocked != 2:
         if longest == 2:
@@ -456,7 +469,7 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
         elif longest == 4:
             val += 6 * NORMAL_GAIN
 
-    if longest == 5:
+    if longest >= 5:
         val += BIG_GAIN
 
     if longest_opponent == 2:
@@ -473,111 +486,83 @@ def evaluate(game: Game, last_move: Tuple[int, int], player):
 
     val += check_neighbor(board, last_move)
 
-    print(f"score: {val}")
-
     return val
 
 
-def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, last_move):
-    opponent = game.get_opponent(player.value)
-    if not depth or game.board.is_winner_moove(
-        opponent, last_move[0], last_move[1], game
-    ):
-        return evaluate(game, last_move, opponent)
+def minmax(game: Game, depth, alpha, beta, maximizingPlayer, player: Player, last_move, maximizer_value: int):
+    """
+    player = joueur qui DOIT jouer à ce nœud
+    last_move = coup joué au parent (donc déjà posé sur le board)
+    score renvoyé = toujours du point de vue du maximizer_value
+    """
+    global NODES, T0
+    if T0 == 0.0:
+        T0 = time.time()
+    NODES += 1
+    if NODES % 5000 == 0:
+        print(f"[minmax] nodes={NODES} elapsed={time.time()-T0:.2f}s depth={depth}")
 
-    moves = potential_moves(game, player)
+    lx, ly = int(last_move[0]), int(last_move[1])
+    last_value = int(game.board.board[ly, lx])
+    last_player = game.get_player(last_value)
+
+    # Terminal: win sur last_move
+    if game.board.is_winner_moove(last_player, lx, ly, game):
+        return BIG_GAIN if last_value == maximizer_value else BIG_LOSS
+
+    if depth == 0:
+        raw = evaluate(game, (lx, ly), last_player)
+        return raw if last_value == maximizer_value else -raw
+
+    moves = list(potential_moves(game, player))
+    opponent = game.get_opponent(player.value)
+
+    if not moves:
+        # Aucun coup: neutre
+        return 0
 
     if maximizingPlayer:
         maxEval = float("-inf")
+        for mx, my in moves:
+            prev = make_move(game, player, int(mx), int(my))
+            eval_value = minmax(game, depth - 1, alpha, beta, False, opponent, (int(mx), int(my)), maximizer_value)
+            unmake_move(game, player, prev)
 
-        for move in moves:
-            new_state = game.copy()
-
-            is_capture, new_board, score = new_state.board.check_is_capture_moove(
-                new_state,
-                player,
-                new_state.get_opponent(player.value).value,
-                move[0],
-                move[1],
-            )
-
-            if is_capture:
-                new_state.board.update_board(new_board)
-                new_state.get_player(player.value).capture_score += score
-
-            new_state.board.board[move[1]][move[0]] = player.value
-
-            eval_value = minmax(
-                new_state,
-                depth - 1,
-                alpha,
-                beta,
-                not maximizingPlayer,
-                opponent,
-                last_move=move,
-            )
-
-            maxEval = max(maxEval, eval_value)
-            alpha = max(alpha, eval_value)
-
+            if eval_value > maxEval:
+                maxEval = eval_value
+            if eval_value > alpha:
+                alpha = eval_value
             if beta <= alpha:
                 break
         return maxEval
     else:
         minEval = float("inf")
+        for mx, my in moves:
+            prev = make_move(game, player, int(mx), int(my))
+            eval_value = minmax(game, depth - 1, alpha, beta, True, opponent, (int(mx), int(my)), maximizer_value)
+            unmake_move(game, player, prev)
 
-        for move in moves:
-            new_state = game.copy()
-
-            is_capture, new_board, score = new_state.board.check_is_capture_moove(
-                new_state,
-                player,
-                new_state.get_opponent(player.value).value,
-                move[0],
-                move[1],
-            )
-
-            if is_capture:
-                new_state.board.update_board(new_board)
-                new_state.get_player(player.value).capture_score += score
-
-            new_state.board.board[move[1]][move[0]] = player.value
-            eval_value = minmax(
-                new_state,
-                depth - 1,
-                alpha,
-                beta,
-                not maximizingPlayer,
-                opponent,
-                last_move=move,
-            )
-
-            minEval = min(minEval, eval_value)
-            beta = min(beta, eval_value)
-
+            if eval_value < minEval:
+                minEval = eval_value
+            if eval_value < beta:
+                beta = eval_value
             if beta <= alpha:
                 break
         return minEval
 
 
 def move_maker_thread(game: Game):
-    # last_turn = game.P1.name
     while game.program_run and game.game_state != GameState.Finish:
         if game.type != GameType.FUTURE:
             if game.player_turn == game.P1.value:
-                # last_turn = game.P1.name
                 time.sleep(0.1)
                 continue
 
         player_value = game.get_player_value()
         player = game.get_player(player_value)
         opponent = game.get_opponent(player_value)
-        # if last_turn == game.P1.name:
-        #     last_turn = game.P2.name
-        # last_move = game.P1.last_moves[0]
-        last_move = None
-        if len(opponent.last_moves) > 0:
-            last_move = opponent.last_moves[0]
+
+        last_move = opponent.last_moves[0] if len(opponent.last_moves) > 0 else None
         rows, cols = game.board.board.shape
 
         print("Human had moved")
@@ -586,21 +571,15 @@ def move_maker_thread(game: Game):
             direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
 
             if last_move is None:
-                game.board.play_moove(
-                    game, random.randint(0, 18), random.randint(0, 18)
-                )
+                game.board.play_moove(game, random.randint(0, 18), random.randint(0, 18))
             else:
-                while not (
-                    game.board.is_on_board(
-                        last_move[1] + direction[1], last_move[0] + direction[0]
-                    )
-                    # 0 <= last_move[1] + direction[1] < rows
-                    # and 0 <= last_move[0] + direction[0] < cols
-                ):
+                while not game.board.is_on_board(last_move[1] + direction[1], last_move[0] + direction[0]):
                     direction = random.choice(POTENTIAL_MOVES_DIRECTIONS)
 
                 game.board.play_moove(
-                    game, last_move[0] + direction[0], last_move[1] + direction[1]
+                    game,
+                    int(last_move[0] + direction[0]),
+                    int(last_move[1] + direction[1]),
                 )
 
             print("AI Played randomly")
@@ -611,11 +590,9 @@ def move_maker_thread(game: Game):
         ):
             while move_calculated.running:
                 time.sleep(0.01)
-                pass
 
-            game.board.play_moove(
-                game, move_calculated.move_to_do[0], move_calculated.move_to_do[1]
-            )
+            x, y = move_calculated.move_to_do
+            game.board.play_moove(game, int(x), int(y))
             print("AI Played move already calculated")
         else:
             print("Start calculated next move.")
@@ -624,101 +601,101 @@ def move_maker_thread(game: Game):
             executor.submit(thread_AI, game, move_manager, player, opponent)
 
             while move_manager.running:
-                # print("oui")
                 time.sleep(0.01)
-            game.board.play_moove(
-                game, move_manager.move_to_do[0], move_manager.move_to_do[1]
-            )
 
+            x, y = move_manager.move_to_do
+            game.board.play_moove(game, int(x), int(y))
             print("AI Played move calculated on the fly")
-        time.sleep(.5)
+
+        time.sleep(0.5)
 
 
-def thread_opponent(game: Game):
-    while game.program_run and game.game_state != GameState.Finish:
-        start_time = time.time()
-        move_score = []
+def thread_AI(game: Game, move_manager: HumanMoveManager, player: Player, opponent: Player):
+    """
+    Calcule la réponse IA au coup humain move_manager.move.
+    Robuste:
+    - ne bloque jamais (finally: running=False)
+    - affiche traceback en cas d'exception
+    - fallback si aucun move
+    """
+    import traceback
 
-        if (
-            not np.any(game.board.board == 1)
-            or game.player_turn == 2
-            or len(game.board.human_best_moves) == NUMBER_BEST_MOVES
-        ):
-            time.sleep(0.1)
-            continue
+    global NODES, T0
+    NODES = 0
+    T0 = 0.0
 
-        moves = potential_moves(game, game.P1)
-        best_score = 0
-
-        for move in moves:
-            new_state = game.copy()
-            new_state.board.board[move[1]][move[0]] = game.P1.value
-            score = minmax(
-                new_state, DEPTH_MAX - 1, -10000000000, 10000000000, True, game.P2, move
-            )
-            # game.board.play_moove(game, move[0], move[1])
-
-            move_score.append(score)
-            # if best_score < score:
-            #     best_score = score
-            #     best_move = move
-        # print(move_score)
-
-        game.board.human_best_moves = [
-            HumanMoveManager(move)
-            for move, _ in sorted(
-                list(zip(moves, move_score)), key=lambda x: x[1], reverse=True
-            )[:NUMBER_BEST_MOVES]
-        ]
-
-        for move in game.board.human_best_moves:
-            # game.board.board[move.move[0]][move.move[1]] = 1
-            # time.sleep(.1)
-
-            executor.submit(thread_AI, game, move)
-
-        elapsed = time.time() - start_time  # Fin du chrono
-        # print(f"Temps total de l'itération : {elapsed:.3f} secondes")
-
-
-def thread_AI(
-    game: Game, move_manager: HumanMoveManager, player: Player, opponent: Player
-):
     start_time = time.time()
-    state = game.copy()
-    state.board.board[move_manager.move[1], move_manager.move[0]] = opponent.value
+    try:
+        state = game.copy()
 
-    best_scores = []
-    moves = potential_moves(state, player)
+        # IMPORTANT: utiliser les objets Player de l'état copié
+        ai = state.get_player(player.value)
+        human = state.get_player(opponent.value)
 
-    max_score = float("-inf")
+        # Appliquer le coup humain proprement (captures, scores, last_moves)
+        hx, hy = move_manager.move
+        prev_h = make_move(state, human, int(hx), int(hy))
 
-    for move in moves:
-        # if game.player_turn == 2:
-        #     return
-        new_state = state.copy()
-        new_state.board.board[move[1], move[0]] = player.value
-        # print(game.P1.name)
-        score = minmax(
-            new_state, DEPTH_MAX - 1, -10000000000, 10000000000, True, player, move
+        moves = list(potential_moves(state, ai))
+        if not moves:
+            # fallback: voisinage immédiat
+            for dx, dy in POTENTIAL_MOVES_DIRECTIONS:
+                nx, ny = int(hx + dx), int(hy + dy)
+                if 0 <= nx < 19 and 0 <= ny < 19 and state.board.board[ny, nx] == 0:
+                    move_manager.move_to_do = (nx, ny)
+                    return
+            empties = np.argwhere(state.board.board == 0)
+            ey, ex = empties[random.randrange(len(empties))]
+            move_manager.move_to_do = (int(ex), int(ey))
+            return
+
+        max_score = float("-inf")
+        best_moves = []
+
+        for mx, my in moves:
+            prev_ai = make_move(state, ai, int(mx), int(my))
+
+            # après le coup IA, c'est au joueur humain de jouer -> maximizingPlayer=False
+            score = minmax(
+                state,
+                DEPTH_MAX - 1,
+                -10**18,
+                10**18,
+                False,
+                human,
+                (int(mx), int(my)),
+                maximizer_value=ai.value,
+            )
+
+            unmake_move(state, ai, prev_ai)
+
+            if score > max_score:
+                max_score = score
+                best_moves = [(int(mx), int(my))]
+            elif score == max_score:
+                best_moves.append((int(mx), int(my)))
+
+        # Annuler le coup humain
+        unmake_move(state, human, prev_h)
+
+        if not best_moves:
+            empties = np.argwhere(state.board.board == 0)
+            ey, ex = empties[random.randrange(len(empties))]
+            move_manager.move_to_do = (int(ex), int(ey))
+        else:
+            move_manager.move_to_do = random.choice(best_moves)
+
+        elapsed = time.time() - start_time
+        print(
+            f"[{elapsed:.3f}s] AI chose {move_manager.move_to_do} score={max_score} vs human {move_manager.move}"
         )
-        best_scores.append({"score": score, "move": move})
-        # game.board.play_moove(game, move[0], move[1])
 
-        if max_score < score:
-            max_score = score
+    except Exception:
+        print("thread_AI crashed:\n", traceback.format_exc())
+        # fallback safe
+        empties = np.argwhere(game.board.board == 0)
+        ey, ex = empties[random.randrange(len(empties))]
+        move_manager.move_to_do = (int(ex), int(ey))
 
-    best_moves = [entry["move"] for entry in best_scores if entry["score"] == max_score]
-
-    move_manager.move_to_do = random.choice(best_moves)
-    move_manager.running = False
-
-    elapsed = time.time() - start_time  # Fin du chrono
-    print(
-        f"[{elapsed:.3f}s] Thread AI chose move {move_manager.move_to_do} (score: {max_score:03}) in response to human move {move_manager.move}"
-    )
-
-
-# def thread_opponent(game):
-#     while True:
-#         print('hello')
+    finally:
+        move_manager.running = False
