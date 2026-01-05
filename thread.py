@@ -273,9 +273,7 @@ def find_longest_opponent_diag(board, last_move: Tuple[int, int]):
     opponent = 3 - player
 
     for slope in [(1, 1), (1, -1)]:
-        # right=True/False historique, ici on encode ça via slope
         for down in [1, -1]:
-            # down contrôle le signe sur la 2e composante
             s = (slope[0], slope[1] * down)
             for length in range(1, 5):
                 start = [last_move[0] + s[0], last_move[1] + s[1]]
@@ -283,7 +281,6 @@ def find_longest_opponent_diag(board, last_move: Tuple[int, int]):
                 if values is None:
                     break
                 number_player = np.count_nonzero(values == opponent)
-                # on stocke dans un des paniers pour garder une structure similaire
                 bucket = True if slope == (1, 1) else False
                 longest[bucket][down].append(number_player)
                 if number_player < length:
@@ -477,7 +474,7 @@ def evaluate(game: Game, last_move: Tuple[int, int], player: Player):
     elif longest_opponent == 3:
         val += 4 * NORMAL_GAIN
     elif longest_opponent >= 4:
-        val += BIG_GAIN
+        val += BIG_GAIN * 1000
 
     if attacking:
         val += 4 * SMALL_GAIN + NORMAL_GAIN * player.capture_score
@@ -558,6 +555,9 @@ def move_maker_thread(game: Game):
                 time.sleep(0.1)
                 continue
 
+        # >>> Mesure "calcul + attente" (temps total côté IA jusqu'au play_moove)
+        start_ai = time.time()
+
         player_value = game.get_player_value()
         player = game.get_player(player_value)
         opponent = game.get_opponent(player_value)
@@ -606,6 +606,9 @@ def move_maker_thread(game: Game):
             x, y = move_manager.move_to_do
             game.board.play_moove(game, int(x), int(y))
             print("AI Played move calculated on the fly")
+
+        # >>> Stockage du temps total IA (calcul + attente)
+        game.ai_last_response_time = time.time() - start_ai
 
         time.sleep(0.5)
 

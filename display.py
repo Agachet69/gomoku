@@ -1,3 +1,5 @@
+# display.py
+
 import pygame
 from Board import Board, BOARD_SIZE
 from game import Game
@@ -34,10 +36,27 @@ def get_grid_position(mouse_pos):
     return x, y
 
 
+def draw_ai_response_time(screen, fonts, game):
+    # Pas d'affichage en PvP
+    if getattr(game, "type", None) == GameType.PvP:
+        return
+
+    t = getattr(game, "ai_last_response_time", None)
+    if t is None:
+        return
+
+    ms = int(t * 1000)
+    txt = fonts["little"].render(f"IA: {ms} ms ({t:.3f}s)", True, RED)
+    screen.blit(txt, (10, 10))
+
+
 def init_game():
     pygame.init()
 
     game = Game(1)
+    # Valeur par défaut (tant que l'IA n'a pas joué)
+    game.ai_last_response_time = None
+
     fonts = get_fonts()
 
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
@@ -52,6 +71,7 @@ def init_game():
 
             elif game.game_state == GameState.Creating:
                 draw_menu_screen(screen, fonts, game, event)
+
             elif (
                 game.game_state == GameState.Playing
                 or game.game_state == GameState.LastChance
@@ -59,7 +79,10 @@ def init_game():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)
+
                 draw_game(screen, fonts, game, event)
+                draw_ai_response_time(screen, fonts, game)
+
                 if event.type == pygame.MOUSEMOTION:
                     if hasattr(event, "pos"):
                         x, y = get_grid_position(event.pos)
@@ -75,12 +98,15 @@ def init_game():
                         game.board.set_temp_stone(x, y)
 
                 pygame.display.flip()
+
             elif (
                 game.game_state == GameState.Finish or game.game_state == GameState.Draw
             ):
                 if hasattr(event, "pos"):
                     draw_game(screen, fonts, game, event)
                     draw_finish_modal(screen, game, fonts, event)
+                    draw_ai_response_time(screen, fonts, game)
+
         if (
             (
                 game.game_state == GameState.Playing
@@ -91,6 +117,8 @@ def init_game():
         ):
             ia_board = np.copy(game.board.board)
             draw_game(screen, fonts, game, event)
+            draw_ai_response_time(screen, fonts, game)
+
         elif (
             (game.game_state == GameState.Finish or game.game_state == GameState.Draw)
             and not np.array_equal(ia_board, game.board.board)
@@ -99,6 +127,8 @@ def init_game():
             ia_board = np.copy(game.board.board)
             draw_game(screen, fonts, game, event)
             draw_finish_modal(screen, game, fonts, event)
+            draw_ai_response_time(screen, fonts, game)
+
         pygame.display.flip()
 
     pygame.quit()
