@@ -631,7 +631,6 @@ def thread_AI(game: Game, move_manager: HumanMoveManager, player: Player, oppone
     try:
         state = game.copy()
 
-        # IMPORTANT: utiliser les objets Player de l'état copié
         ai = state.get_player(player.value)
         human = state.get_player(opponent.value)
 

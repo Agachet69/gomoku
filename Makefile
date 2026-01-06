@@ -1,4 +1,4 @@
-NAME        := gomoku
+NAME        := Gomoku
 VENV        := .venv
 PY          := $(VENV)/bin/python
 ENTRY       := srcs/gomoku.py

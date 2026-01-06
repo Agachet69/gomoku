@@ -77,7 +77,7 @@ def draw_menu_screen(screen, fonts, game: Game, event):
 
     draw_text(
         screen,
-        "Bienvenue sur Gomoku",
+        "Welcome to Gomoku",
         fonts["font_big"],
         WINDOW_SIZE // 2,
         WINDOW_SIZE // 4,
@@ -89,7 +89,7 @@ def draw_menu_screen(screen, fonts, game: Game, event):
 
     first_choice = fonts["font"].render("1. Play with AI", True, BLACK)
     second_choice = fonts["font"].render("2. Play with friend", True, BLACK)
-    third_choice = fonts["font"].render("3. Prevoir l'avenir", True, BLACK)
+    third_choice = fonts["font"].render("3. Crystal ball.", True, BLACK)
 
     first_choice_rect = first_choice.get_rect(
         center=(box_rect.left + first_choice.get_width() / 2 + 80, box_rect.top + 130)
@@ -129,12 +129,16 @@ def draw_finish_modal(screen, game: Game, fonts, event):
         text_surface = fonts["font_big"].render(text, True, BLACK)
         text_rect = text_surface.get_rect(center=(box_width // 2, 60))
 
-    replay_surface = fonts["font"].render("Rejouer", True, BLACK)
-    menu_surface = fonts["font"].render("Menu principal", True, BLACK)
+    replay_surface = fonts["font"].render("Replay", True, BLACK)
+    menu_surface = fonts["font"].render("Main menu", True, BLACK)
 
-    max_text_width = max(replay_surface.get_width(), menu_surface.get_width())
+    if game.type != GameType.AI:
+        max_text_width = max(replay_surface.get_width(), menu_surface.get_width())
+    else:
+        max_text_width = menu_surface.get_width()
+
     button_width = max_text_width + 40
-    button_height = replay_surface.get_height() + 20
+    button_height = menu_surface.get_height() + 20
 
     replay_rect = pygame.Rect(0, 0, button_width, button_height)
     replay_rect.center = (box_width // 2, 160)
@@ -151,20 +155,22 @@ def draw_finish_modal(screen, game: Game, fonts, event):
         modal_surface, bg_color, modal_surface.get_rect(), border_radius=15
     )
     modal_surface.blit(text_surface, text_rect)
-    pygame.draw.rect(modal_surface, GRAY, replay_rect, border_radius=14)
     pygame.draw.rect(modal_surface, GRAY, menu_rect, border_radius=14)
-    modal_surface.blit(
-        replay_surface, replay_surface.get_rect(center=replay_rect.center)
-    )
+    if game.type != GameType.AI:
+        pygame.draw.rect(modal_surface, GRAY, replay_rect, border_radius=14)
+        modal_surface.blit(
+            replay_surface, replay_surface.get_rect(center=replay_rect.center)
+        )
     modal_surface.blit(menu_surface, menu_surface.get_rect(center=menu_rect.center))
     screen.blit(modal_surface, (box_rect.x, box_rect.y))
 
     if event.type == pygame.MOUSEBUTTONDOWN:
-        abs_replay_rect = replay_rect.move(box_rect.topleft)
         abs_menu_rect = menu_rect.move(box_rect.topleft)
-        if abs_replay_rect.collidepoint(event.pos):
-            game.replay()
-        elif abs_menu_rect.collidepoint(event.pos):
+        if game.type != GameType.AI:
+            abs_replay_rect = replay_rect.move(box_rect.topleft)
+            if abs_replay_rect.collidepoint(event.pos):
+                game.replay()
+        if abs_menu_rect.collidepoint(event.pos):
             game.menu()
 
 

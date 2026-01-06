@@ -76,14 +76,14 @@ def init_game():
                 game.game_state == GameState.Playing
                 or game.game_state == GameState.LastChance
             ):
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.type == pygame.MOUSEBUTTONDOWN and game.type != GameType.FUTURE:
                     x, y = get_grid_position(pygame.mouse.get_pos())
                     game.board.play_moove(game, x, y)
 
                 draw_game(screen, fonts, game, event)
                 draw_ai_response_time(screen, fonts, game)
 
-                if event.type == pygame.MOUSEMOTION:
+                if event.type == pygame.MOUSEMOTION and game.type != GameType.FUTURE:
                     if hasattr(event, "pos"):
                         x, y = get_grid_position(event.pos)
                         if x != game.board.temp_stonex or y != game.board.temp_stoney:

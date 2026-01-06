@@ -30,9 +30,9 @@ import thread
 import numpy as np
 from typing import Tuple
 
-from srcs.game import Game
-from srcs.player import Player
-from srcs.enums.game_state_enum import GameType
+from game import Game
+from player import Player
+from enums.game_state_enum import GameType
 
 
 def setup_game_with_sample_position() -> Tuple[Game, Tuple[int, int], Player]:
@@ -93,7 +93,7 @@ def benchmark(depth: int = 2):
     try:
         print(f"Lancement du benchmark depth={depth} ...")
         t0 = time.perf_counter()
-        score = thread.minmax(game, depth, float("-inf"), float("inf"), True, player, last_move)
+        score = thread.minmax(game, depth, float("-inf"), float("inf"), True, player, last_move, 1)
         t1 = time.perf_counter()
 
         elapsed = t1 - t0

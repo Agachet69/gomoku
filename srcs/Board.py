@@ -419,20 +419,14 @@ class Board:
                     )
                 else:
                     game.winner = my_player
-                    # self.has_player_won(my_player.value)
                     game.game_state = GameState.Finish
 
             if game.type == GameType.PvP:
                 game.addHistoric(self.board.copy())
-            # if self.is_winner_moove(my_player, x, y, game):
-            #     game.winner = my_player
-            #     game.game_state = GameState.Finish
             if np.count_nonzero(self.board == 0) == 0:
                 game.winner = opponent
                 game.game_state = GameState.Draw
             my_player.last_moves.insert(0, (x, y))
-        # else:
-        #     print("Illegal moove.")
 
     def update_board(self, new_board):
         self.board = new_board

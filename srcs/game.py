@@ -25,7 +25,6 @@ class Game:
         self.player_turn = 1
         self.P1 = P1
         self.P2 = P2
-        ## self.winner initialisé deux fois et une fois directement à P2 ?
         self.winner = P2 
 
     def has_played(self):
@@ -57,6 +56,8 @@ class Game:
         self.player_turn = 1
         self.P1.capture_score = 0
         self.P2.capture_score = 0
+        self.historic = []
+        self.step_historic = 0
         self.game_state = GameState.Playing
 
     def menu(self):
