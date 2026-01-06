@@ -23,16 +23,16 @@ Remarques :
   `game.board.board`) permet d'obtenir des mesures plus représentatives.
 """
 
+
 import sys
 import time
+import thread
+import numpy as np
 from typing import Tuple
 
-import numpy as np
-
-import thread
-from game import Game
-from player import Player
-from game_state_enum import GameType
+from srcs.game import Game
+from srcs.player import Player
+from srcs.enums.game_state_enum import GameType
 
 
 def setup_game_with_sample_position() -> Tuple[Game, Tuple[int, int], Player]:

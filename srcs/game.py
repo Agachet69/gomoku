@@ -1,6 +1,6 @@
 from player import Player
 from Board import Board
-from game_state_enum import GameState
+from enums.game_state_enum import GameState
 import numpy as np
 from config import BOARD_SIZE
 

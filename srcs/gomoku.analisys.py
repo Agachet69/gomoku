@@ -1,8 +1,3 @@
-
-
-
-
-
 import yappi
 
 yappi.start()

@@ -3,8 +3,7 @@ import pygame.gfxdraw
 from game import Game
 from Board import Board
 from player import Player
-from game_state_enum import GameState
-from game_state_enum import GameType
+from enums.game_state_enum import GameState, GameType
 from thread import init_threads
 from config import (
     WINDOW_SIZE,
@@ -179,22 +178,22 @@ def draw_board(screen, fonts, game: Game):
     board = game.board
     screen.fill(GOBAN)
 
-    for i in range(BOARD_SIZE + 1):
+    for i in range(BOARD_SIZE):
         pygame.draw.line(
             screen,
             BLACK,
-            (PADDING, PADDING + (CELL_SIZE * i)),
-            (PADDING + CELL_SIZE * 19, PADDING + (CELL_SIZE * i)),
+            ((CELL_SIZE / 2) + PADDING, (CELL_SIZE / 2) + PADDING + (CELL_SIZE * i)),
+            ((-CELL_SIZE / 2) + PADDING + CELL_SIZE * 19, (CELL_SIZE / 2) +  PADDING + (CELL_SIZE * i)),
             1,
         )
         pygame.draw.line(
             screen,
             BLACK,
-            (PADDING + (CELL_SIZE * i), PADDING),
-            (PADDING + (CELL_SIZE * i), PADDING + (CELL_SIZE * 19)),
+            ((CELL_SIZE / 2) + PADDING + (CELL_SIZE * i), (CELL_SIZE / 2) + PADDING ),
+            ((CELL_SIZE / 2) + PADDING + (CELL_SIZE * i), (-CELL_SIZE / 2) + PADDING + (CELL_SIZE * 19)),
             1,
         )
-        nb = fonts["tinny"].render(f"{i}", True, BLACK)
+        nb = fonts["tinny"].render(f"{i + 1}", True, BLACK)
         if i < 19:
             screen.blit(
                 nb,

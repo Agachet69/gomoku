@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from Board import Board, HumanMoveManager
 from game import Game
-from game_state_enum import GameState, GameType
+from enums.game_state_enum import GameState, GameType
 from player import Player
 
 

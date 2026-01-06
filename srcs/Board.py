@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from game_state_enum import GameState, GameType
+from enums.game_state_enum import GameState, GameType
 from player import Player
 from typing import TYPE_CHECKING, List
 

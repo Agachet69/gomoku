@@ -4,7 +4,7 @@ import pygame
 from Board import Board, BOARD_SIZE
 from game import Game
 from player import Player
-from game_state_enum import GameState, GameType
+from enums.game_state_enum import GameState, GameType
 import sys
 import time
 import numpy as np
